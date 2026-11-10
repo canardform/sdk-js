@@ -33,7 +33,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 - Without `onSubmitted`, the form is replaced by the thank-you message.
 - A refused field gets its message under it (`cf-field-error`) and the form goes back to that field's step; any other error (closed form, network…) is shown under the form (`cf-error`), with `messages.error` instead of the server's text when set. `onError` is called in both cases.
 - `beforeSubmit` can only add answers to questions of the form (a hidden question, for instance): any other key is ignored by the server.
-- `renderField` receives the default rendering; returning `undefined` keeps it. `fieldControl(field)` describes a field's control (tag, attributes, choices) to build your own.
+- `renderField` receives the default rendering; returning `undefined` keeps it. The default rendering is also exported: `renderField(field)` returns a field as unstyled HTML (label, control, help text), and `fieldControl(field)` only describes its control (tag, attributes, choices).
 
 | Option           | Type                                                              | Description                                                         |
 | ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -145,6 +145,7 @@ Also exported by `@canardform/sdk`, for your own rendering:
 | `visibleKeys(fields, answers)`, `answersOf(form)` | Display conditions (see [Steps and conditions](./steps-and-conditions))            |
 | `matches(group, answers)`                         | Evaluates one condition group                                                      |
 | `fieldControl(field)`, `CLASSES`                  | A field's control without DOM (tag, attributes, choices), default class names      |
+| `renderField(field)`                              | A field as unstyled HTML (label, control, help text), as `mountForm` builds it     |
 | `defaultMessages(locale)`                         | Built-in texts                                                                     |
 
 Types: `PublicForm`, `PublicField`, `PublicStep`, `ErrorCode`, `SubmitOptions`, `MountOptions`, `MountedForm`, `FieldControl`, `Answers`, `ConditionGroup`; from `@canardform/sdk/controller`: `FormState`, `FormStatus`, `ControllerOptions`, `FormController`.
