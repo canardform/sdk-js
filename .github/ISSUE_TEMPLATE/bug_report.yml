@@ -1,0 +1,33 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: SDK version
+      placeholder: 1.0.0-alpha.1
+    validations:
+      required: true
+  - type: dropdown
+    id: integration
+    attributes:
+      label: Integration
+      options:
+        [
+          mountForm (JavaScript),
+          React,
+          Vue,
+          Next.js,
+          Nuxt,
+          submitForm / getForm,
+        ]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: A minimal code sample helps a lot. Never paste real answers or personal data.
+    validations:
+      required: true

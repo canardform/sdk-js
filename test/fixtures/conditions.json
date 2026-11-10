@@ -1,0 +1,218 @@
+[
+    {
+        "name": "equals, scalar",
+        "answers": { "subject": "quote" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "subject", "operator": "equals", "value": "quote" }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "equals, other value",
+        "answers": { "subject": "other" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "subject", "operator": "equals", "value": "quote" }
+            ]
+        },
+        "expected": false
+    },
+    {
+        "name": "equals, number as string",
+        "answers": { "age": 18 },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "age", "operator": "equals", "value": "18" }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "equals, checkbox true",
+        "answers": { "agree": true },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "agree", "operator": "equals", "value": true }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "not_equals, missing answer",
+        "answers": {},
+        "group": {
+            "match": "all",
+            "conditions": [
+                {
+                    "field": "subject",
+                    "operator": "not_equals",
+                    "value": "quote"
+                }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "contains, list",
+        "answers": { "topics": ["a", "b"] },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "topics", "operator": "contains", "value": "b" }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "contains, text case-insensitive",
+        "answers": { "message": "Bonjour CANARD" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                {
+                    "field": "message",
+                    "operator": "contains",
+                    "value": "canard"
+                }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "contains, empty expected",
+        "answers": { "message": "x" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "message", "operator": "contains", "value": "" }
+            ]
+        },
+        "expected": false
+    },
+    {
+        "name": "in",
+        "answers": { "country": "be" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "country", "operator": "in", "value": ["fr", "be"] }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "filled",
+        "answers": { "company": "ACME" },
+        "group": {
+            "match": "all",
+            "conditions": [{ "field": "company", "operator": "filled" }]
+        },
+        "expected": true
+    },
+    {
+        "name": "filled, empty list",
+        "answers": { "topics": [] },
+        "group": {
+            "match": "all",
+            "conditions": [{ "field": "topics", "operator": "filled" }]
+        },
+        "expected": false
+    },
+    {
+        "name": "empty, unchecked box",
+        "answers": { "agree": false },
+        "group": {
+            "match": "all",
+            "conditions": [{ "field": "agree", "operator": "empty" }]
+        },
+        "expected": true
+    },
+    {
+        "name": "gt, numbers",
+        "answers": { "age": "21" },
+        "group": {
+            "match": "all",
+            "conditions": [{ "field": "age", "operator": "gt", "value": 18 }]
+        },
+        "expected": true
+    },
+    {
+        "name": "lt, dates",
+        "answers": { "date": "2026-01-15" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "date", "operator": "lt", "value": "2026-02-01" }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "gt, missing answer",
+        "answers": {},
+        "group": {
+            "match": "all",
+            "conditions": [{ "field": "age", "operator": "gt", "value": 0 }]
+        },
+        "expected": false
+    },
+    {
+        "name": "all, one false",
+        "answers": { "a": "1", "b": "2" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "a", "operator": "equals", "value": "1" },
+                { "field": "b", "operator": "equals", "value": "3" }
+            ]
+        },
+        "expected": false
+    },
+    {
+        "name": "any, one true",
+        "answers": { "a": "1", "b": "2" },
+        "group": {
+            "match": "any",
+            "conditions": [
+                { "field": "a", "operator": "equals", "value": "9" },
+                { "field": "b", "operator": "equals", "value": "2" }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "nested: a AND (b OR c)",
+        "answers": { "a": "1", "c": "3" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "a", "operator": "equals", "value": "1" },
+                {
+                    "match": "any",
+                    "conditions": [
+                        { "field": "b", "operator": "equals", "value": "2" },
+                        { "field": "c", "operator": "equals", "value": "3" }
+                    ]
+                }
+            ]
+        },
+        "expected": true
+    },
+    {
+        "name": "unknown operator",
+        "answers": { "a": "1" },
+        "group": {
+            "match": "all",
+            "conditions": [
+                { "field": "a", "operator": "matches", "value": "1" }
+            ]
+        },
+        "expected": false
+    }
+]

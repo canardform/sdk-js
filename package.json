@@ -1,0 +1,112 @@
+{
+    "name": "@canardform/sdk",
+    "version": "1.0.0-alpha.1",
+    "description": "Send answers to Canard Form from your own website: plain HTML, JavaScript, React, Vue and server-side rendering.",
+    "keywords": [
+        "canard-form",
+        "forms",
+        "form-backend",
+        "react",
+        "vue",
+        "nextjs",
+        "nuxt",
+        "ssr"
+    ],
+    "homepage": "https://canardform.github.io/sdk-js/",
+    "bugs": "https://github.com/canardform/sdk-js/issues",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/canardform/sdk-js.git"
+    },
+    "license": "MIT",
+    "author": "DEVILLE Computing",
+    "type": "module",
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src",
+        "!src/**/*.test.*"
+    ],
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./controller": {
+            "types": "./dist/controller.d.ts",
+            "default": "./dist/controller.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "default": "./dist/react.js"
+        },
+        "./vue": {
+            "types": "./dist/vue.d.ts",
+            "default": "./dist/vue.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "scripts": {
+        "build": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
+        "typecheck": "tsc --noEmit",
+        "lint": "eslint . && prettier --check .",
+        "format": "eslint --fix . && prettier --write .",
+        "test": "vitest run",
+        "check:package": "publint --strict && attw --pack --profile esm-only",
+        "docs:dev": "vitepress dev docs",
+        "docs:build": "vitepress build docs",
+        "prepack": "npm run build"
+    },
+    "peerDependencies": {
+        "react": ">=18",
+        "vue": ">=3.3"
+    },
+    "peerDependenciesMeta": {
+        "react": {
+            "optional": true
+        },
+        "vue": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@arethetypeswrong/cli": "^0.18.5",
+        "@eslint/js": "^10.0.1",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "eslint": "^10.14.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "globals": "^17.14.0",
+        "happy-dom": "^21.0.4",
+        "prettier": "^3.9.10",
+        "publint": "^0.3.25",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "typescript": "~6.0.3",
+        "typescript-eslint": "^8.72.2",
+        "vite": "^8.0.0",
+        "vitepress": "^1.6.4",
+        "vitest": "^5.1.0",
+        "vue": "^3.5.45"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    },
+    "browserslist": [
+        "last 2 Chrome versions",
+        "last 2 Edge versions",
+        "last 2 Firefox versions",
+        "Firefox ESR",
+        "Safari >= 15",
+        "iOS >= 15",
+        "last 2 Samsung versions",
+        "last 2 ChromeAndroid versions"
+    ]
+}
