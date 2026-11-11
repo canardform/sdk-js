@@ -108,5 +108,11 @@
         "iOS >= 15",
         "last 2 Samsung versions",
         "last 2 ChromeAndroid versions"
-    ]
+    ],
+    "overrides": {
+        "minimatch": "^11.0.7",
+        "vitepress": {
+            "vite": "^6.4.6"
+        }
+    }
 }
