@@ -1,0 +1,6 @@
+/* Logo complet, très large : réduit sur téléphone pour laisser la place à la recherche et au menu */
+@media (max-width: 480px) {
+    .VPNavBarTitle .logo {
+        height: 16px;
+    }
+}

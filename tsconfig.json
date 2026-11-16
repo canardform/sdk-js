@@ -13,5 +13,5 @@
         "skipLibCheck": true,
         "noEmit": true
     },
-    "include": ["src", "*.config.ts", "docs/.vitepress/*.ts"]
+    "include": ["src", "*.config.ts", "docs/.vitepress/**/*.ts"]
 }

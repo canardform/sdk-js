@@ -5,6 +5,9 @@ hero:
   name: Canard Form SDK
   text: Your forms, your website
   tagline: Send answers to Canard Form from plain HTML, JavaScript, React, Vue or server-side rendering, with no API key in the browser.
+  image:
+    src: /mascot.webp
+    alt: The Canard Form duck, in pilot goggles and scarf
   actions:
     - theme: brand
       text: Get started

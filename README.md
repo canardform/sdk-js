@@ -1,3 +1,13 @@
+<p>
+  <img src="https://canardform.github.io/sdk-js/mascot.webp" alt="The Canard Form duck, in pilot goggles and scarf" width="120" align="right">
+  <a href="https://canardform.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://canardform.github.io/sdk-js/logo-dark.svg">
+      <img src="https://canardform.github.io/sdk-js/logo-light.svg" alt="Canard Form" width="320">
+    </picture>
+  </a>
+</p>
+
 # Canard Form SDK
 
 [![npm](https://img.shields.io/npm/v/@canardform/sdk/alpha)](https://www.npmjs.com/package/@canardform/sdk)

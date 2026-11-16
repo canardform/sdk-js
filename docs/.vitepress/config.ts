@@ -7,8 +7,21 @@ export default defineConfig({
     base: '/sdk-js/',
     lang: 'en-US',
     cleanUrls: true,
+    // Les liens de head ne passent pas par base, contrairement au logo du thème
+    head: [
+        [
+            'link',
+            { rel: 'icon', type: 'image/svg+xml', href: '/sdk-js/favicon.svg' },
+        ],
+    ],
     lastUpdated: true,
     themeConfig: {
+        logo: {
+            light: '/logo-light.svg',
+            dark: '/logo-dark.svg',
+            alt: 'Canard Form',
+        },
+        siteTitle: 'SDK',
         nav: [
             { text: 'Guide', link: '/guide/getting-started' },
             { text: 'Canard Form', link: 'https://canardform.com' },
