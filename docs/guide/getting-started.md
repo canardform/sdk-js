@@ -25,13 +25,13 @@ Without a build tool (a plain HTML page), load the SDK from jsDelivr, minified (
 ```html
 <div id="contact"></div>
 <script type="module">
-  import { mountForm } from 'https://cdn.jsdelivr.net/npm/@canardform/sdk@1.0.0-alpha.2/+esm';
+  import { mountForm } from 'https://cdn.jsdelivr.net/npm/@canardform/sdk@1.0.0-alpha.3/+esm';
   mountForm('#contact', 'ID');
 </script>
 ```
 
 ::: info Pin the exact version during the alpha
-Semver ranges never match pre-releases, so `@1` does not resolve to `1.0.0-alpha.2`. Once 1.0.0 is stable, use `@canardform/sdk@1/+esm`: bug fixes arrive on their own, and a version 2 changes nothing on your site.
+Semver ranges never match pre-releases, so `@1` does not resolve to `1.0.0-alpha.3`. Once 1.0.0 is stable, use `@canardform/sdk@1/+esm`: bug fixes arrive on their own, and a version 2 changes nothing on your site.
 :::
 
 The same code works with or without server-side rendering: without it, the fields are read in the browser; with it, pass `definition` (read by `getForm` on the server) so the form is already in the HTML. See [Server-side rendering](./ssr).

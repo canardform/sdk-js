@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-alpha.3] - 2026-11-17
+
+### Added
+
+- Hidden fields (`type: 'hidden'`, with `param` and `default` on `PublicField`): never rendered, sent on
+  submission with the page address parameter (`?utm_source=…`, the field key by default), otherwise
+  their default. A value already in the data (`beforeSubmit`, your own input) wins.
+  `withHiddenValues(definition, data)` does it for your own rendering.
+
+### Changed
+
+- `stepsOf` leaves hidden fields out, and skips a step that only has hidden fields.
+
 ## [1.0.0-alpha.2] - 2026-11-17
 
 ### Added
@@ -46,6 +59,7 @@ First public pre-release.
   server shows a fallback (`cf-unavailable`, `messages.unavailable`, Vue `#unavailable` slot) instead of
   an empty spot or an endless loading state.
 
-[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.2...HEAD
+[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.3...HEAD
+[1.0.0-alpha.3]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
 [1.0.0-alpha.2]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/canardform/sdk-js/releases/tag/v1.0.0-alpha.1

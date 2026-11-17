@@ -33,6 +33,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 - Without `onSubmitted`, the form is replaced by the thank-you message.
 - A refused field gets its message under it (`cf-field-error`, linked to the field) and the form goes back to that field's step, with the focus on the field, or on a summary of the errors (`cf-error-summary`) when there are several; any other error (closed form, network…) is shown under the form (`cf-error`), with `messages.error` instead of the server's text when set. `onError` is called in both cases.
 - `beforeSubmit` can only add answers to questions of the form (a hidden question, for instance): any other key is ignored by the server.
+- A hidden question (`type: 'hidden'`) is never shown: it is sent with the page address parameter it reads (`?utm_source=…`, its key by default), otherwise its default value. `beforeSubmit` overrides it. The React and Vue components do the same; for your own rendering, `withHiddenValues(definition, data)` adds these values.
 - `renderField` receives the default rendering; returning `undefined` keeps it. The default rendering is also exported: `renderField(field, locale)` returns a field as unstyled HTML (label, control, help text, file constraints), and `fieldControl(field, error)` only describes its control (tag, attributes, choices).
 
 | Option           | Type                                                              | Description                                                         |
