@@ -34,7 +34,7 @@ Like [`mountForm`](./sdk), but as a native component: fields, labels, languages,
 Three levels:
 
 1. **Classes**: `classes` (`form`, `field`, `error`, `success`, `closed`, `unavailable`, `submit`), without touching the markup.
-2. **One field**: `renderField={({ field, error, children }) => …}`. Return `children` to keep the default rendering; `<FieldInput field={field} />` gives the control alone. The `loading` prop sets what shows while loading.
+2. **One field**: `renderField={({ field, error, children }) => …}`. Return `children` to keep the default rendering; `<FieldInput field={field} error={error} />` gives the control alone (marked invalid and pointing to `cf-<key>-error` when there is an error: give that id to your message). The `loading` prop sets what shows while loading.
 3. **All the HTML**: the `useCanardForm` hook below, with your own fields.
 
 ## Your fields, the SDK does the rest
@@ -74,6 +74,8 @@ The hook returns:
 | `submit(data)`                                                | Sends a `FormData` or an object, resolves to the id or `null`               |
 | `reset()`                                                     | Back to the initial state                                                   |
 | `captchaRef`                                                  | Ref for an empty element of the form, see [Bot protection](./anti-robot)    |
+| `captchaError`                                                | Message when the bot check was not done, to show next to it                 |
 | `steps`, `step`, `isStep(key)`, `next(element)`, `previous()` | See [Steps and conditions](./steps-and-conditions)                          |
+| `showField(key)`                                              | Shows the step of this field (link of an error summary)                     |
 
 No rendering is imposed. With server-side rendering, nothing is read before mount; pass `definition` (read with `getForm` on the server) to know the conditions from the first render.

@@ -290,6 +290,12 @@ describe('CanardForm components', () => {
         )!.value = 'a@b.fr';
         await click('.cf-next');
         expect(visibleStep().dataset.step).toBe('what');
+        expect(document.activeElement).toBe(
+            container.querySelector('#cf-step-what'),
+        );
+        expect(document.activeElement!.textContent).toBe(
+            'Étape 2 sur 2 Votre demande',
+        );
         expect(container.querySelector('button[type="submit"]')).not.toBeNull();
 
         await click('.cf-previous');
@@ -337,6 +343,7 @@ describe('CanardForm components', () => {
 
     it('Vue: shows one step at a time', async () => {
         const root = document.createElement('div');
+        document.body.append(root);
         createApp({
             render: () =>
                 h(VueCanardForm, {
@@ -355,8 +362,16 @@ describe('CanardForm components', () => {
         root.querySelector<HTMLButtonElement>('.cf-next')!.click();
         await nextTick();
         expect(visibleStep().dataset.step).toBe('what');
-        expect(root.querySelector('.cf-progress')!.textContent).toBe(
+        expect(visibleStep().getAttribute('aria-labelledby')).toBe(
+            'cf-step-what',
+        );
+        expect(visibleStep().querySelector('.cf-progress')!.textContent).toBe(
             'Étape 2 sur 2',
+        );
+        // The step title takes the focus: "Step 2 of 2" is read out
+        await nextTick();
+        expect(document.activeElement).toBe(
+            root.querySelector('#cf-step-what'),
         );
     });
 
@@ -384,6 +399,205 @@ describe('CanardForm components', () => {
         );
         expect(vue).toContain('Étape 1 sur 2');
         expect(vue).toContain('name="email"');
+        expect(fetch).not.toHaveBeenCalled();
+    });
+});
+
+describe('accessibility of the components', () => {
+    const fields = {
+        id: 'f1',
+        locale: 'en',
+        open: true,
+        hcaptcha: null,
+        fields: [
+            {
+                key: 'email',
+                type: 'email',
+                label: 'E-mail',
+                help: 'Work address',
+                required: true,
+            },
+            {
+                key: 'size',
+                type: 'radio',
+                label: 'Size',
+                required: true,
+                options: [{ value: 's', label: 'S' }],
+            },
+            {
+                key: 'docs',
+                type: 'file',
+                label: 'Documents',
+                required: false,
+                rules: { max_size: 5, accept: ['pdf'] },
+            },
+            {
+                key: 'zip',
+                type: 'text',
+                label: 'Postcode',
+                required: false,
+                autocomplete: 'postal-code',
+            },
+        ],
+    };
+    const refused = () =>
+        json(422, {
+            error: 'validation_failed',
+            errors: {
+                'answers.email': ['Invalid address.'],
+                'answers.size': ['Pick a size.'],
+            },
+        });
+    const mounts = {
+        React: async (root: HTMLElement, fetch: typeof globalThis.fetch) => {
+            await act(async () =>
+                createRoot(root).render(
+                    createElement(CanardForm, {
+                        formId: 'f1',
+                        definition: fields,
+                        fetch,
+                    }),
+                ),
+            );
+            return (run: () => void) => act(async () => run());
+        },
+        Vue: async (root: HTMLElement, fetch: typeof globalThis.fetch) => {
+            createApp({
+                render: () =>
+                    h(VueCanardForm, {
+                        formId: 'f1',
+                        definition: fields,
+                        fetch,
+                    } as never),
+            }).mount(root);
+            await nextTick();
+            return async (run: () => void) => {
+                run();
+                await nextTick();
+            };
+        },
+    };
+
+    it.each(Object.entries(mounts))(
+        '%s: language, required marks, linked help, errors summed up and focused, thank-you message focused',
+        async (_name, mount) => {
+            const fetch = vi
+                .fn<typeof globalThis.fetch>()
+                .mockReturnValueOnce(refused())
+                .mockReturnValueOnce(json(201, { submission_id: 's1' }));
+            const root = document.createElement('div');
+            document.body.append(root);
+            const run = await mount(root, fetch);
+            const form = root.querySelector('form')!;
+            const email = form.querySelector('#cf-email')!;
+            const size = form.querySelector('#cf-size')!;
+
+            expect(form.lang).toBe('en');
+            expect(form.querySelector('.cf-required-notice')!.textContent).toBe(
+                'Fields marked with an asterisk (*) are required.',
+            );
+            expect(
+                form.querySelector(
+                    'label[for="cf-email"] [aria-hidden="true"]',
+                )!.textContent,
+            ).toBe('*');
+            expect(email.getAttribute('autocomplete')).toBe('email');
+            expect(email.getAttribute('aria-describedby')).toBe(
+                'cf-email-help',
+            );
+            expect(
+                form.querySelector('#cf-zip')!.getAttribute('autocomplete'),
+            ).toBe('postal-code');
+            expect(form.querySelector('#cf-size-label')!.tagName).toBe('SPAN');
+            expect(size.getAttribute('role')).toBe('radiogroup');
+            expect(size.getAttribute('aria-required')).toBe('true');
+            expect(
+                form.querySelector<HTMLInputElement>('[name="size"]')!.required,
+            ).toBe(true);
+            expect(
+                form
+                    .querySelector('#cf-docs')!
+                    .getAttribute('aria-describedby'),
+            ).toBe('cf-docs-hint');
+            expect(form.querySelector('#cf-docs-hint')!.textContent).toBe(
+                'Up to 1 file of 5 MB. Accepted formats: PDF.',
+            );
+
+            await run(() =>
+                form.dispatchEvent(
+                    new Event('submit', { bubbles: true, cancelable: true }),
+                ),
+            );
+            const summary = await vi.waitFor(() => {
+                const node = form.querySelector('.cf-error-summary')!;
+                expect(document.activeElement).toBe(node);
+                return node;
+            });
+            expect(summary.querySelector('p')!.textContent).toBe(
+                'The form contains 2 errors.',
+            );
+            expect(
+                [...summary.querySelectorAll('a')].map((link) => [
+                    link.getAttribute('href'),
+                    link.textContent,
+                ]),
+            ).toEqual([
+                ['#cf-email', 'E-mail: Invalid address.'],
+                ['#cf-size', 'Size: Pick a size.'],
+            ]);
+            expect(email.getAttribute('aria-invalid')).toBe('true');
+            expect(email.getAttribute('aria-describedby')).toBe(
+                'cf-email-help cf-email-error',
+            );
+            expect(form.querySelector('#cf-email-error')!.textContent).toBe(
+                'Invalid address.',
+            );
+            expect(size.getAttribute('aria-invalid')).toBe('true');
+
+            await run(() => summary.querySelectorAll('a')[1].click());
+            await vi.waitFor(() =>
+                expect(document.activeElement).toBe(
+                    size.querySelector('input'),
+                ),
+            );
+
+            await run(() =>
+                form.dispatchEvent(
+                    new Event('submit', { bubbles: true, cancelable: true }),
+                ),
+            );
+            await vi.waitFor(() =>
+                expect(document.activeElement?.className).toBe('cf-success'),
+            );
+            expect(document.activeElement!.getAttribute('role')).toBe('status');
+            root.remove();
+        },
+    );
+
+    it('asks for the anti-robot check instead of sending when its token is missing', async () => {
+        const fetch = vi.fn<typeof globalThis.fetch>();
+        const form = createFormController('f1', {
+            definition: {
+                ...fields,
+                hcaptcha: {
+                    sitekey: 'k',
+                    script: 'https://js.hcaptcha.com/1/api.js',
+                },
+            },
+            fetch,
+        });
+        const element = document.createElement('form');
+        element.innerHTML = '<textarea name="h-captcha-response"></textarea>';
+
+        expect(
+            await form.handleSubmit({
+                preventDefault() {},
+                currentTarget: element,
+            }),
+        ).toBeNull();
+        expect(form.getState().captchaError).toBe(
+            'Check the verification box before sending.',
+        );
         expect(fetch).not.toHaveBeenCalled();
     });
 });

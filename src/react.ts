@@ -7,7 +7,7 @@ import {
 import type { ReactNode } from 'react';
 import { createFormController } from './controller.js';
 import type { ControllerOptions } from './controller.js';
-import { CLASSES, defaultMessages, fieldControl } from './index.js';
+import { CLASSES, defaultMessages, fieldControl, fieldHint } from './index.js';
 import type { PublicField } from './index.js';
 
 /**
@@ -42,14 +42,24 @@ export function useCanardForm(formId: string, options: ControllerOptions = {}) {
         // Steps: form.steps, form.step; next(element of the step) checks its fields before moving on
         next: controller.next,
         previous: controller.previous,
+        showField: controller.showField,
         isStep: (key: string) => state.steps[state.step]?.key === key,
         reset: controller.reset,
     };
 }
 
-/** A field's control (input, textarea, select, choices), without label: reusable in custom rendering. */
-export function FieldInput({ field }: { field: PublicField }): ReactNode {
-    const control = fieldControl(field);
+/**
+ * A field's control (input, textarea, select, choices), without label: reusable in custom rendering. With
+ * `error`, it is marked invalid and described by `cf-<key>-error` (give that id to your message).
+ */
+export function FieldInput({
+    field,
+    error,
+}: {
+    field: PublicField;
+    error?: string | null;
+}): ReactNode {
+    const control = fieldControl(field, error);
     const { value, ...attrs } = control.attrs;
 
     if (control.tag === 'select') {
@@ -79,6 +89,7 @@ export function FieldInput({ field }: { field: PublicField }): ReactNode {
                         type: choice.type,
                         name: choice.name,
                         value: choice.value,
+                        required: choice.required,
                     }),
                     ` ${choice.label}`,
                 ),
@@ -139,6 +150,24 @@ export function CanardForm({
     const css = { ...CLASSES, ...classes };
     const definition = form.definition;
     const ui = defaultMessages(definition?.locale ?? options.lang);
+    const [element, setElement] = useState<HTMLFormElement | null>(null);
+    const [success, setSuccess] = useState<HTMLElement | null>(null);
+    // Element to focus once rendered: the title of the new step, or a field reached from the error summary
+    const [focus, setFocus] = useState<{ selector: string } | null>(null);
+
+    useEffect(() => {
+        if (focus) element?.querySelector<HTMLElement>(focus.selector)?.focus();
+    }, [element, focus]);
+    // The thank-you message is read out as soon as it replaces the form
+    useEffect(() => success?.focus(), [success]);
+    // After a refusal: the error summary, or the only invalid field (first choice of a group)
+    useEffect(() => {
+        if (form.status !== 'error') return;
+        const target = element?.querySelector<HTMLElement>(
+            '.cf-error-summary, [aria-invalid="true"]',
+        );
+        (target?.querySelector('input') ?? target)?.focus();
+    }, [element, form.status, form.errors]);
 
     if (!definition)
         return form.unavailable
@@ -151,30 +180,53 @@ export function CanardForm({
     if (!definition.open)
         return h(
             'p',
-            { className: css.closed },
+            { className: css.closed, lang: definition.locale },
             definition.closed_message ?? messages?.closed ?? ui.closed,
         );
     if (form.status === 'sent' && !onSubmitted) {
         return h(
             'p',
-            { className: css.success, role: 'status' },
+            {
+                ref: setSuccess,
+                className: css.success,
+                role: 'status',
+                tabIndex: -1,
+                lang: definition.locale,
+            },
             definition.success_message ?? messages?.success ?? ui.success,
         );
     }
 
     const field = (item: PublicField) => {
         const error = form.errors[item.key];
+        const id = `cf-${item.key}`;
+        // A group of choices is named by aria-labelledby: a <label for> would point to no control
+        const group = item.type === 'radio' || item.type === 'checkboxes';
+        const hint = fieldHint(item, definition.locale);
         const children = h(
             'div',
             { key: item.key, className: css.field, 'data-key': item.key },
             h(
-                'label',
-                { id: `cf-${item.key}-label`, htmlFor: `cf-${item.key}` },
+                group ? 'span' : 'label',
+                { id: `${id}-label`, htmlFor: group ? undefined : id },
                 item.label,
+                item.required ? ' ' : null,
+                item.required
+                    ? h(
+                          'span',
+                          { className: 'cf-required', 'aria-hidden': true },
+                          '*',
+                      )
+                    : null,
             ),
-            h(FieldInput, { field: item }),
-            item.help ? h('small', null, item.help) : null,
-            error ? h('p', { className: css.error }, error) : null,
+            h(FieldInput, { field: item, error }),
+            item.help ? h('small', { id: `${id}-help` }, item.help) : null,
+            hint
+                ? h('small', { id: `${id}-hint`, className: 'cf-hint' }, hint)
+                : null,
+            error
+                ? h('p', { id: `${id}-error`, className: css.error }, error)
+                : null,
         );
 
         return renderField?.({ field: item, error, children }) ?? children;
@@ -182,6 +234,7 @@ export function CanardForm({
     // All steps stay in the form (their answers are sent on submission), only one is visible
     const multiStep = form.steps.length > 1;
     const last = form.step >= form.steps.length - 1;
+    const stepTitle = 'section:not([hidden]) > .cf-step-title';
     const sections = form.steps.map((step, index) =>
         h(
             'section',
@@ -190,20 +243,48 @@ export function CanardForm({
                 className: 'cf-step',
                 'data-step': step.key,
                 hidden: index !== form.step,
+                'aria-labelledby': multiStep
+                    ? `cf-step-${step.key}`
+                    : undefined,
             },
-            multiStep && step.title
-                ? h('p', { className: 'cf-step-title' }, step.title)
+            // Named by its title, with "Step x of y", focused when moving between steps
+            multiStep
+                ? h(
+                      'h2',
+                      {
+                          id: `cf-step-${step.key}`,
+                          className: 'cf-step-title',
+                          tabIndex: -1,
+                      },
+                      h(
+                          'span',
+                          { className: 'cf-progress' },
+                          ui.progress(index + 1, form.steps.length),
+                      ),
+                      step.title ? ' ' : null,
+                      step.title
+                          ? h('span', { className: 'cf-step-name' }, step.title)
+                          : null,
+                  )
                 : null,
             ...step.fields
                 .filter((item) => form.isVisible(item.key))
                 .map(field),
         ),
     );
+    const invalid = form.steps
+        .flatMap((step) => step.fields)
+        .filter((item) => form.isVisible(item.key) && item.key in form.errors);
+    const next = (from: EventTarget | null) => {
+        if (form.next(from)) setFocus({ selector: stepTitle });
+    };
 
     return h(
         'form',
         {
+            ref: setElement,
             className: css.form,
+            lang: definition.locale,
             onChange: form.handleChange,
             onSubmit: async (event: {
                 preventDefault(): void;
@@ -212,26 +293,72 @@ export function CanardForm({
                 // Enter on an intermediate step: move on instead of sending
                 if (!last) {
                     event.preventDefault();
-                    form.next(event.currentTarget);
+                    next(event.currentTarget);
                     return;
                 }
                 const id = await form.handleSubmit(event);
                 if (id) onSubmitted?.(id);
             },
         },
-        multiStep
+        invalid.length > 1
             ? h(
-                  'p',
-                  { className: 'cf-progress' },
-                  ui.progress(form.step + 1, form.steps.length),
+                  'div',
+                  { className: 'cf-error-summary', tabIndex: -1 },
+                  h('p', null, ui.errors(invalid.length)),
+                  h(
+                      'ul',
+                      null,
+                      ...invalid.map((item) =>
+                          h(
+                              'li',
+                              { key: item.key },
+                              h(
+                                  'a',
+                                  {
+                                      href: `#cf-${item.key}`,
+                                      onClick: (event: {
+                                          preventDefault(): void;
+                                      }) => {
+                                          event.preventDefault();
+                                          setFocus({
+                                              selector: `[data-key="${item.key}"] :is(input, select, textarea)`,
+                                          });
+                                          form.showField(item.key);
+                                      },
+                                  },
+                                  ui.errorItem(
+                                      item.label,
+                                      form.errors[item.key],
+                                  ),
+                              ),
+                          ),
+                      ),
+                  ),
               )
             : null,
+        definition.fields.some((item) => item.required)
+            ? h('p', { className: 'cf-required-notice' }, ui.required)
+            : null,
         ...sections,
+        form.captchaError
+            ? h(
+                  'p',
+                  {
+                      id: 'cf-captcha-error',
+                      className: css.error,
+                      role: 'alert',
+                  },
+                  form.captchaError,
+              )
+            : null,
         definition.hcaptcha
             ? h('div', {
                   ref: form.captchaRef,
                   className: 'cf-captcha',
                   hidden: !last,
+                  'aria-describedby': form.captchaError
+                      ? 'cf-captcha-error'
+                      : undefined,
               })
             : null,
         form.error
@@ -243,7 +370,10 @@ export function CanardForm({
                   {
                       type: 'button',
                       className: 'cf-previous',
-                      onClick: form.previous,
+                      onClick: () => {
+                          setFocus({ selector: stepTitle });
+                          form.previous();
+                      },
                   },
                   messages?.previous ?? ui.previous,
               )
@@ -264,7 +394,7 @@ export function CanardForm({
                       type: 'button',
                       className: 'cf-next',
                       onClick: (event: { currentTarget: EventTarget | null }) =>
-                          form.next(event.currentTarget),
+                          next(event.currentTarget),
                   },
                   messages?.next ?? ui.next,
               ),

@@ -8,7 +8,7 @@ import { mountForm } from '@canardform/sdk';
 mountForm('#contact', 'ID');
 ```
 
-Fields, labels, languages and display conditions come from the published version: what you change in Canard Form shows up on your site without touching it. The markup is simple and unstyled (`cf-form`, `cf-field`, `cf-error`, `cf-field-error`, `cf-captcha`, `cf-success`, `cf-closed`, `cf-unavailable`, `cf-submit`), ready for your CSS. The default class names are exported as `CLASSES`.
+Fields, labels, languages and display conditions come from the published version: what you change in Canard Form shows up on your site without touching it. The markup is simple and unstyled (`cf-form`, `cf-field`, `cf-required`, `cf-required-notice`, `cf-hint`, `cf-error`, `cf-field-error`, `cf-error-summary`, `cf-captcha`, `cf-success`, `cf-closed`, `cf-unavailable`, `cf-submit`), ready for your CSS, and accessible (see [Accessibility](#accessibility)). The default class names are exported as `CLASSES`.
 
 ## Options
 
@@ -31,9 +31,9 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 ```
 
 - Without `onSubmitted`, the form is replaced by the thank-you message.
-- A refused field gets its message under it (`cf-field-error`) and the form goes back to that field's step; any other error (closed form, network…) is shown under the form (`cf-error`), with `messages.error` instead of the server's text when set. `onError` is called in both cases.
+- A refused field gets its message under it (`cf-field-error`, linked to the field) and the form goes back to that field's step, with the focus on the field, or on a summary of the errors (`cf-error-summary`) when there are several; any other error (closed form, network…) is shown under the form (`cf-error`), with `messages.error` instead of the server's text when set. `onError` is called in both cases.
 - `beforeSubmit` can only add answers to questions of the form (a hidden question, for instance): any other key is ignored by the server.
-- `renderField` receives the default rendering; returning `undefined` keeps it. The default rendering is also exported: `renderField(field)` returns a field as unstyled HTML (label, control, help text), and `fieldControl(field)` only describes its control (tag, attributes, choices).
+- `renderField` receives the default rendering; returning `undefined` keeps it. The default rendering is also exported: `renderField(field, locale)` returns a field as unstyled HTML (label, control, help text, file constraints), and `fieldControl(field, error)` only describes its control (tag, attributes, choices).
 
 | Option           | Type                                                              | Description                                                         |
 | ---------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -58,7 +58,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 
 ## Built-in texts
 
-The built-in texts ("Send", "Next", "Previous", "Step 1 of 2", "This form is closed.", "This form cannot be shown right now. Please try again later.", "Thank you!") follow the form's language (before it is loaded: the `lang` option, then the visitor's browser): French for a `fr*` locale, English otherwise. They are exported as `defaultMessages(locale)`:
+The built-in texts ("Send", "Next", "Previous", "Step 1 of 2", "This form is closed.", "This form cannot be shown right now. Please try again later.", "Thank you!", the required fields notice, the error summary, the bot check reminder and the file constraints) follow the form's language (before it is loaded: the `lang` option, then the visitor's browser): French for a `fr*` locale, English otherwise. They are exported as `defaultMessages(locale)`:
 
 ```js
 import { defaultMessages } from '@canardform/sdk';
@@ -88,6 +88,20 @@ mountForm('#contact', 'ID', {
 }).catch((error) => console.warn('Contact form unavailable', error));
 ```
 
+## Accessibility
+
+`mountForm`, `<CanardForm>` (React and Vue) aim at WCAG 2.2 AA (RGAA 4.1). They handle:
+
+- `lang` on the `<form>` (the form's language) and an `autocomplete` attribute on each control (see [getForm](#getform)).
+- Labels: a `<label for>` per control; a group of radios or checkboxes is a `role="radiogroup"` / `role="group"` named by its label (`aria-labelledby`), with `aria-required`. A required field has an asterisk (`<span aria-hidden="true">*</span>`, plus `required`), and a sentence before the fields explains it.
+- Help text and the constraints of a file field (number of files, size, formats) shown and linked to the control (`aria-describedby`, ids `cf-<key>-help` and `cf-<key>-hint`).
+- Steps: each one is a `<section>` named by an `<h2>` ("Step 2 of 3" and the step title) that takes the focus when moving between steps.
+- Errors: the message of a refused field (`cf-<key>-error`) is linked to it, the control is marked `aria-invalid`; after a refused submission the focus goes to the field, or to a summary ("The form contains 2 errors.") whose links lead to each field. Both are cleared on the next attempt.
+- Bot check: the send button is never disabled; when the box is not checked (or has expired), a message linked to the widget says so.
+- The thank-you message (`role="status"`) takes the focus.
+
+Left to your site: colour contrast, focus outline and text size in your CSS (the markup has no style), an `<h1>` before the form if the steps' `<h2>` should fit your page outline, anything you render yourself (`renderField`, slots, the hooks: `FieldInput` / `fieldInput` take the field's error and point to `cf-<key>-label`, `cf-<key>-help` and `cf-<key>-error`, give those ids to your elements), and the accessibility of the hCaptcha widget itself.
+
 ## submitForm
 
 To keep your own rendering without an adapter (Svelte, Angular…):
@@ -103,7 +117,11 @@ await submitForm('ID', data, { idempotencyKey: order.id }); // retry without dup
 
 ## getForm
 
-`getForm('ID', { lang })` reads the published form without a key, as a `PublicForm`: `id`, `locale`, `open`, `fields` (with their display conditions `visible_if`), `steps`, `submit_label`, `success_message`, `closed_message` and `hcaptcha`. It throws a `CanardFormError` with `not_found` when the form cannot be read. It works in the browser and on the server, which is how [server-side rendering](./ssr) gets its `definition`.
+`getForm('ID', { lang })` reads the published form without a key, as a `PublicForm`: `id`, `locale`, `open`, `fields`, `steps`, `submit_label`, `success_message`, `closed_message` and `hcaptcha`. It throws a `CanardFormError` with `not_found` when the form cannot be read.
+
+Each field (`PublicField`) has `key`, `type`, `label`, `required` and, when set, `help`, `placeholder`, `options`, `visible_if` (display condition), `autocomplete` (purpose for the browser's autofill, from a closed list: `name`, `given-name`, `family-name`, `email`, `tel`, `organization`, `organization-title`, `street-address`, `address-line1`, `address-line2`, `postal-code`, `address-level2`, `country-name`, `bday`, `url`, `language`), `no_autofill` and, for a file, `rules` (`max_files`, `max_size` in MB, `accept` extensions).
+
+The rendered `autocomplete` attribute is `off` when `no_autofill` is set, otherwise the field's `autocomplete`, otherwise `email`, `tel` or `url` for those types, otherwise none. It works in the browser and on the server, which is how [server-side rendering](./ssr) gets its `definition`.
 
 ## Other frameworks
 
@@ -119,17 +137,18 @@ form.load().catch(() => {}); // reads the fields; on failure, getState().unavail
 // <form onchange=form.handleChange onsubmit=form.handleSubmit>
 ```
 
-| Member                                       | Description                                                                                            |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `getState()`                                 | `{ definition, visible, status, errors, error, submissionId, unavailable, steps, step }` (`FormState`) |
-| `subscribe(listener)`                        | Called on every change; returns the unsubscribe function                                               |
-| `load()`                                     | Reads the published form once (not needed with `definition`)                                           |
-| `isVisible(key)`, `setAnswers(answers)`      | Display conditions, from the current answers                                                           |
-| `handleChange(event)`, `handleSubmit(event)` | To wire on the `<form>`: conditions on change; submit, or next step on an intermediate one             |
-| `submit(data)`                               | Sends a `FormData` or an object; resolves to the submission id, or `null` when refused                 |
-| `next(element)`, `previous()`, `isStep(key)` | Steps (see [Steps and conditions](./steps-and-conditions))                                             |
-| `captchaRef(element)`                        | Shows the anti-robot check in this element                                                             |
-| `reset()`                                    | Back to an empty form at the first step                                                                |
+| Member                                       | Description                                                                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `getState()`                                 | `{ definition, visible, status, errors, error, captchaError, submissionId, unavailable, steps, step }` (`FormState`) |
+| `subscribe(listener)`                        | Called on every change; returns the unsubscribe function                                                             |
+| `load()`                                     | Reads the published form once (not needed with `definition`)                                                         |
+| `isVisible(key)`, `setAnswers(answers)`      | Display conditions, from the current answers                                                                         |
+| `handleChange(event)`, `handleSubmit(event)` | To wire on the `<form>`: conditions on change; submit, or next step on an intermediate one                           |
+| `submit(data)`                               | Sends a `FormData` or an object; resolves to the submission id, or `null` when refused                               |
+| `next(element)`, `previous()`, `isStep(key)` | Steps (see [Steps and conditions](./steps-and-conditions))                                                           |
+| `showField(key)`                             | Shows the step of this field (link of an error summary)                                                              |
+| `captchaRef(element)`                        | Shows the anti-robot check in this element                                                                           |
+| `reset()`                                    | Back to an empty form at the first step                                                                              |
 
 See [Steps and conditions](./steps-and-conditions) for `visibleKeys`, and [Bot protection](./anti-robot) for `renderCaptcha` / `resetCaptcha`.
 
@@ -144,8 +163,9 @@ Also exported by `@canardform/sdk`, for your own rendering:
 | `validateStep(element)`                           | Browser validation of the controls inside `element`; reports the first invalid one |
 | `visibleKeys(fields, answers)`, `answersOf(form)` | Display conditions (see [Steps and conditions](./steps-and-conditions))            |
 | `matches(group, answers)`                         | Evaluates one condition group                                                      |
-| `fieldControl(field)`, `CLASSES`                  | A field's control without DOM (tag, attributes, choices), default class names      |
-| `renderField(field)`                              | A field as unstyled HTML (label, control, help text), as `mountForm` builds it     |
+| `fieldControl(field, error?)`, `CLASSES`          | A field's control without DOM (tag, attributes, choices), default class names      |
+| `renderField(field, locale?)`                     | A field as unstyled HTML (label, control, help text), as `mountForm` builds it     |
+| `fieldHint(field, locale?)`                       | The constraints of a file field written out (number, size, formats)                |
 | `defaultMessages(locale)`                         | Built-in texts                                                                     |
 
 Types: `PublicForm`, `PublicField`, `PublicStep`, `ErrorCode`, `SubmitOptions`, `MountOptions`, `MountedForm`, `FieldControl`, `Answers`, `ConditionGroup`; from `@canardform/sdk/controller`: `FormState`, `FormStatus`, `ControllerOptions`, `FormController`.

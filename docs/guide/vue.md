@@ -32,7 +32,7 @@ Like [`mountForm`](./sdk), but as a native component: fields, labels, languages,
 Three levels:
 
 1. **Classes**: `classes` (`form`, `field`, `error`, `success`, `closed`, `unavailable`, `submit`), without touching the markup.
-2. **One field**: `<template #field="{ field, error, input }">…</template>`; `<component :is="input" />` gives the control alone (`fieldInput(field)` is also exported). Also the `#success` (receives `{ submissionId }`), `#closed`, `#unavailable` and `#loading` slots.
+2. **One field**: `<template #field="{ field, error, input }">…</template>`; `<component :is="input" />` gives the control alone, marked invalid and pointing to `cf-<key>-error` when there is an error (`fieldInput(field, error)` is also exported). Also the `#success` (receives `{ submissionId }`), `#closed`, `#unavailable` and `#loading` slots.
 3. **All the HTML**: the `useCanardForm` composable below, with your own fields.
 
 ```vue
@@ -42,7 +42,7 @@ Three levels:
       {{ field.label }}
       <component :is="input" />
     </label>
-    <p v-if="error">{{ error }}</p>
+    <p v-if="error" :id="`cf-${field.key}-error`">{{ error }}</p>
   </template>
   <template #success>Thank you!</template>
 </CanardForm>
@@ -69,6 +69,6 @@ const form = useCanardForm('ID');
 </template>
 ```
 
-The composable returns the same API as the [React hook](./react#your-fields-the-sdk-does-the-rest): `status`, `errors`, `error`, `submissionId`, `definition`, `unavailable`, `steps` and `step` as computed refs, plus `isVisible(key)`, `handleSubmit`, `handleChange`, `submit(data)`, `reset()`, `captchaRef`, `isStep(key)`, `next(element)` and `previous()`.
+The composable returns the same API as the [React hook](./react#your-fields-the-sdk-does-the-rest): `status`, `errors`, `error`, `captchaError`, `submissionId`, `definition`, `unavailable`, `steps` and `step` as computed refs, plus `isVisible(key)`, `handleSubmit`, `handleChange`, `submit(data)`, `reset()`, `captchaRef`, `isStep(key)`, `next(element)`, `previous()` and `showField(key)`.
 
 No rendering is imposed. With server-side rendering, nothing is read before mount; pass `definition` (read with `getForm` on the server) to know the conditions from the first render.

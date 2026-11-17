@@ -9,6 +9,7 @@ import {
     stepsOf,
     fieldErrors,
     validateStep,
+    defaultMessages,
 } from './index.js';
 import type {
     Answers,
@@ -32,6 +33,8 @@ export type FormState = {
     errors: Record<string, string>;
     /** General message (closed form, network…). */
     error: string | null;
+    /** The anti-robot check was not done (or has expired): message to show next to it. */
+    captchaError: string | null;
     submissionId: string | null;
     /** The form could not be loaded (unknown form, server unreachable): show a fallback message. */
     unavailable: boolean;
@@ -58,6 +61,7 @@ export function createFormController(
         status: 'idle',
         errors: {},
         error: null,
+        captchaError: null,
         submissionId: null,
         unavailable: false,
         steps: [],
@@ -125,7 +129,7 @@ export function createFormController(
     };
     /** Sends a FormData or an object; returns the submission id, or null if rejected. */
     const submit = async (data: FormData | Record<string, unknown>) => {
-        set({ status: 'sending', errors: {}, error: null });
+        set({ status: 'sending', errors: {}, error: null, captchaError: null });
         try {
             const id = await submitForm(formId, data, {
                 ...options,
@@ -167,6 +171,19 @@ export function createFormController(
             next(form);
             return null;
         }
+        // Anti-robot check not done (or expired): say so instead of sending (the button stays usable)
+        if (
+            state.definition?.hcaptcha &&
+            !new FormData(form).get('h-captcha-response')
+        ) {
+            set({
+                status: 'error',
+                errors: {},
+                error: null,
+                captchaError: defaultMessages(state.definition.locale).captcha,
+            });
+            return null;
+        }
         const id = await submit(new FormData(form));
         if (id) form.reset();
         else resetCaptcha(form);
@@ -197,6 +214,13 @@ export function createFormController(
         return true;
     };
     const previous = () => set({ step: state.step - 1 });
+    /** Shows the step of this field (link of an error summary). */
+    const showField = (key: string) => {
+        const step = state.steps.findIndex((candidate) =>
+            candidate.fields.some((field) => field.key === key),
+        );
+        set({ step: step >= 0 ? step : state.step });
+    };
     /** Is the step with this key the one shown? (<section data-step="key" hidden={!form.isStep('key')}>) */
     const isStep = (key: string) => state.steps[state.step]?.key === key;
     const reset = () => {
@@ -205,6 +229,7 @@ export function createFormController(
             status: 'idle',
             errors: {},
             error: null,
+            captchaError: null,
             submissionId: null,
             step: 0,
         });
@@ -222,6 +247,7 @@ export function createFormController(
         captchaRef,
         next,
         previous,
+        showField,
         isStep,
         reset,
     };

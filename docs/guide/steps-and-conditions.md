@@ -2,7 +2,7 @@
 
 ## Multi-step forms
 
-`mountForm` and `<CanardForm>` show one step at a time: "Step 2 of 3", Previous and Next buttons (texts set by `messages.previous` / `messages.next`), required fields of the step checked before moving on, a step emptied by the conditions skipped. All steps stay in the `<form>`: the submission leaves from the last one with every answer. If the server refuses a field, the form goes back to the step of that field and shows the message under it (the hook's `step` and `errors` do the same). Classes: `cf-step`, `cf-step-title`, `cf-progress`, `cf-previous`, `cf-next`.
+`mountForm` and `<CanardForm>` show one step at a time, each step a `<section>` named by its title (`<h2>`: "Step 2 of 3" and the step's title, focused when moving to that step so that screen readers announce it), Previous and Next buttons (texts set by `messages.previous` / `messages.next`), required fields of the step checked before moving on, a step emptied by the conditions skipped. All steps stay in the `<form>`: the submission leaves from the last one with every answer. If the server refuses a field, the form goes back to the step of that field, shows the message under it and moves the focus there, or to the summary of the errors when there are several (the hook's `step` and `errors` do the same; `showField(key)` moves to a field's step). Classes: `cf-step`, `cf-step-title` (the `<h2>`), `cf-progress` and `cf-step-name` (its two parts), `cf-previous`, `cf-next`.
 
 ### With your own HTML
 

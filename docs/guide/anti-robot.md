@@ -13,7 +13,7 @@ If the form is set to **Bot verification**, each answer must carry an **hCaptcha
 
 The public key is in the generated example of the Integrations tab and in `getForm()` (`hcaptcha.sitekey`).
 
-- `mountForm` and `<CanardForm>` add it on their own.
+- `mountForm` and `<CanardForm>` add it on their own. The send button stays usable: sent without the box checked (or after the token expired), the form shows "Check the verification box before sending." next to the widget instead of sending (`captchaError` in the hook / composable).
 - React: `<div ref={form.captchaRef} />` in your form. Vue: `<div :ref="form.captchaRef" />`. The SDK loads the script, shows the widget and resets it after a refusal.
 - Other frameworks: `renderCaptcha(element, definition)` and `resetCaptcha(form)`.
 

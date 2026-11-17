@@ -3,6 +3,7 @@ import {
     computed,
     defineComponent,
     h,
+    nextTick,
     onMounted,
     onScopeDispose,
     ref,
@@ -11,7 +12,7 @@ import {
 import type { PropType, VNode } from 'vue';
 import { createFormController } from './controller.js';
 import type { ControllerOptions } from './controller.js';
-import { CLASSES, defaultMessages, fieldControl } from './index.js';
+import { CLASSES, defaultMessages, fieldControl, fieldHint } from './index.js';
 import type { PublicField } from './index.js';
 
 /**
@@ -32,6 +33,7 @@ export function useCanardForm(formId: string, options: ControllerOptions = {}) {
         status: computed(() => state.value.status),
         errors: computed(() => state.value.errors),
         error: computed(() => state.value.error),
+        captchaError: computed(() => state.value.captchaError),
         unavailable: computed(() => state.value.unavailable),
         submissionId: computed(() => state.value.submissionId),
         // Steps: form.steps, form.step; next(element of the step) checks its fields before moving on
@@ -45,15 +47,19 @@ export function useCanardForm(formId: string, options: ControllerOptions = {}) {
         submit: controller.submit,
         next: controller.next,
         previous: controller.previous,
+        showField: controller.showField,
         isStep: (key: string) =>
             state.value.steps[state.value.step]?.key === key,
         reset: controller.reset,
     };
 }
 
-/** A field's control (input, textarea, select, choices), without label: reusable in a slot. */
-export function fieldInput(field: PublicField): VNode {
-    const control = fieldControl(field);
+/**
+ * A field's control (input, textarea, select, choices), without label: reusable in a slot. With `error`, it
+ * is marked invalid and described by `cf-<key>-error` (give that id to your message).
+ */
+export function fieldInput(field: PublicField, error?: string | null): VNode {
+    const control = fieldControl(field, error);
 
     if (control.tag === 'select') {
         return h('select', control.attrs, [
@@ -78,6 +84,7 @@ export function fieldInput(field: PublicField): VNode {
                         type: choice.type,
                         name: choice.name,
                         value: choice.value,
+                        required: choice.required,
                     }),
                     ` ${choice.label}`,
                 ]),
@@ -133,6 +140,19 @@ export const CanardForm = defineComponent({
         });
         const css = computed(() => ({ ...CLASSES, ...props.classes }));
         const current = ref<HTMLElement | null>(null);
+        const root = ref<HTMLFormElement | null>(null);
+        const success = ref<HTMLElement | null>(null);
+        const stepTitle = 'section:not([hidden]) > .cf-step-title';
+        // Once rendered: focuses the element (the first choice of a group), so that it is read out
+        const focusLater = (selector: string) =>
+            nextTick(() => {
+                const target =
+                    root.value?.querySelector<HTMLElement>(selector) ?? null;
+                (target?.querySelector('input') ?? target)?.focus();
+            });
+        const next = () => {
+            if (form.next(current.value)) void focusLater(stepTitle);
+        };
 
         return () => {
             const definition = form.definition.value;
@@ -153,7 +173,7 @@ export const CanardForm = defineComponent({
                     slots.closed?.() ??
                     h(
                         'p',
-                        { class: css.value.closed },
+                        { class: css.value.closed, lang: definition.locale },
                         definition.closed_message ??
                             props.messages.closed ??
                             ui.closed,
@@ -167,7 +187,13 @@ export const CanardForm = defineComponent({
                     }) ??
                     h(
                         'p',
-                        { class: css.value.success, role: 'status' },
+                        {
+                            ref: success,
+                            class: css.value.success,
+                            role: 'status',
+                            tabindex: -1,
+                            lang: definition.locale,
+                        },
                         definition.success_message ??
                             props.messages.success ??
                             ui.success,
@@ -177,7 +203,12 @@ export const CanardForm = defineComponent({
 
             const render = (field: PublicField) => {
                 const error = form.errors.value[field.key];
-                const input = () => fieldInput(field);
+                const input = () => fieldInput(field, error);
+                const id = `cf-${field.key}`;
+                // A group of choices is named by aria-labelledby: a <label for> would point to no control
+                const group =
+                    field.type === 'radio' || field.type === 'checkboxes';
+                const hint = fieldHint(field, definition.locale);
 
                 // A slot that renders nothing for this field (Vue then returns a comment) keeps the default rendering
                 const custom = slots.field?.({ field, error, input });
@@ -195,17 +226,48 @@ export const CanardForm = defineComponent({
                         },
                         [
                             h(
-                                'label',
+                                group ? 'span' : 'label',
                                 {
-                                    id: `cf-${field.key}-label`,
-                                    for: `cf-${field.key}`,
+                                    id: `${id}-label`,
+                                    for: group ? undefined : id,
                                 },
-                                field.label,
+                                [
+                                    field.label,
+                                    field.required
+                                        ? [
+                                              ' ',
+                                              h(
+                                                  'span',
+                                                  {
+                                                      class: 'cf-required',
+                                                      'aria-hidden': 'true',
+                                                  },
+                                                  '*',
+                                              ),
+                                          ]
+                                        : null,
+                                ],
                             ),
                             input(),
-                            field.help ? h('small', field.help) : null,
+                            field.help
+                                ? h('small', { id: `${id}-help` }, field.help)
+                                : null,
+                            hint
+                                ? h(
+                                      'small',
+                                      { id: `${id}-hint`, class: 'cf-hint' },
+                                      hint,
+                                  )
+                                : null,
                             error
-                                ? h('p', { class: css.value.error }, error)
+                                ? h(
+                                      'p',
+                                      {
+                                          id: `${id}-error`,
+                                          class: css.value.error,
+                                      },
+                                      error,
+                                  )
                                 : null,
                         ],
                     )
@@ -223,11 +285,39 @@ export const CanardForm = defineComponent({
                         class: 'cf-step',
                         'data-step': step.key,
                         hidden: index !== form.step.value,
+                        'aria-labelledby': multiStep
+                            ? `cf-step-${step.key}`
+                            : undefined,
                         ref: index === form.step.value ? current : undefined,
                     },
                     [
-                        multiStep && step.title
-                            ? h('p', { class: 'cf-step-title' }, step.title)
+                        // Named by its title, with "Step x of y", focused when moving between steps
+                        multiStep
+                            ? h(
+                                  'h2',
+                                  {
+                                      id: `cf-step-${step.key}`,
+                                      class: 'cf-step-title',
+                                      tabindex: -1,
+                                  },
+                                  [
+                                      h(
+                                          'span',
+                                          { class: 'cf-progress' },
+                                          ui.progress(index + 1, steps.length),
+                                      ),
+                                      step.title
+                                          ? [
+                                                ' ',
+                                                h(
+                                                    'span',
+                                                    { class: 'cf-step-name' },
+                                                    step.title,
+                                                ),
+                                            ]
+                                          : null,
+                                  ],
+                              )
                             : null,
                         ...step.fields
                             .filter((field) => form.isVisible(field.key))
@@ -235,38 +325,102 @@ export const CanardForm = defineComponent({
                     ],
                 ),
             );
+            const errors = form.errors.value;
+            const invalid = steps
+                .flatMap((step) => step.fields)
+                .filter(
+                    (field) => form.isVisible(field.key) && field.key in errors,
+                );
 
             return h(
                 'form',
                 {
+                    ref: root,
                     class: css.value.form,
+                    lang: definition.locale,
                     onInput: form.handleChange,
                     onChange: form.handleChange,
                     onSubmit: async (event: Event) => {
                         // Enter on an intermediate step: move on instead of sending
                         if (!last) {
                             event.preventDefault();
-                            form.next(current.value);
+                            next();
                             return;
                         }
                         const id = await form.handleSubmit(event);
-                        if (id) emit('submitted', id);
+                        if (id) {
+                            emit('submitted', id);
+                            await nextTick();
+                            success.value?.focus();
+                        } else {
+                            // The error summary, or the only invalid field
+                            await focusLater(
+                                '.cf-error-summary, [aria-invalid="true"]',
+                            );
+                        }
                     },
                 },
                 [
-                    multiStep
+                    invalid.length > 1
                         ? h(
-                              'p',
-                              { class: 'cf-progress' },
-                              ui.progress(form.step.value + 1, steps.length),
+                              'div',
+                              { class: 'cf-error-summary', tabindex: -1 },
+                              [
+                                  h('p', ui.errors(invalid.length)),
+                                  h(
+                                      'ul',
+                                      invalid.map((field) =>
+                                          h('li', { key: field.key }, [
+                                              h(
+                                                  'a',
+                                                  {
+                                                      href: `#cf-${field.key}`,
+                                                      onClick: (
+                                                          event: Event,
+                                                      ) => {
+                                                          event.preventDefault();
+                                                          form.showField(
+                                                              field.key,
+                                                          );
+                                                          void focusLater(
+                                                              `[data-key="${field.key}"] :is(input, select, textarea)`,
+                                                          );
+                                                      },
+                                                  },
+                                                  ui.errorItem(
+                                                      field.label,
+                                                      errors[field.key],
+                                                  ),
+                                              ),
+                                          ]),
+                                      ),
+                                  ),
+                              ],
                           )
                         : null,
+                    definition.fields.some((field) => field.required)
+                        ? h('p', { class: 'cf-required-notice' }, ui.required)
+                        : null,
                     ...sections,
+                    form.captchaError.value
+                        ? h(
+                              'p',
+                              {
+                                  id: 'cf-captcha-error',
+                                  class: css.value.error,
+                                  role: 'alert',
+                              },
+                              form.captchaError.value,
+                          )
+                        : null,
                     definition.hcaptcha
                         ? h('div', {
                               ref: form.captchaRef,
                               class: 'cf-captcha',
                               hidden: !last,
+                              'aria-describedby': form.captchaError.value
+                                  ? 'cf-captcha-error'
+                                  : undefined,
                           })
                         : null,
                     form.error.value
@@ -282,7 +436,10 @@ export const CanardForm = defineComponent({
                               {
                                   type: 'button',
                                   class: 'cf-previous',
-                                  onClick: form.previous,
+                                  onClick: () => {
+                                      form.previous();
+                                      void focusLater(stepTitle);
+                                  },
                               },
                               props.messages.previous ?? ui.previous,
                           )
@@ -304,7 +461,7 @@ export const CanardForm = defineComponent({
                               {
                                   type: 'button',
                                   class: 'cf-next',
-                                  onClick: () => form.next(current.value),
+                                  onClick: next,
                               },
                               props.messages.next ?? ui.next,
                           ),

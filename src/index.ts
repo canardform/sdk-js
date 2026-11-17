@@ -128,6 +128,12 @@ export type PublicField = {
     options?: { value: string; label: string }[];
     /** The field is shown only when these conditions are met (see `visibleKeys`). */
     visible_if?: ConditionGroup;
+    /** Purpose of the field for browser autofill (WCAG 1.3.5): `name`, `email`, `postal-code`… */
+    autocomplete?: string;
+    /** Autofill turned off by the form's author: the control gets `autocomplete="off"`. */
+    no_autofill?: boolean;
+    /** File field limits: number of files, size of each file in MB, accepted extensions. */
+    rules?: { max_files?: number; max_size?: number; accept?: string[] };
 };
 
 /** A step of the form, in order (keys of its fields). */
@@ -286,6 +292,16 @@ const MESSAGES = {
         next: 'Next',
         previous: 'Previous',
         progress: (step: number, total: number) => `Step ${step} of ${total}`,
+        required: 'Fields marked with an asterisk (*) are required.',
+        errors: (count: number) =>
+            count > 1
+                ? `The form contains ${count} errors.`
+                : 'The form contains 1 error.',
+        errorItem: (label: string, message: string) => `${label}: ${message}`,
+        captcha: 'Check the verification box before sending.',
+        files: (count: number, size?: number) =>
+            `Up to ${count} file${count > 1 ? 's' : ''}${size ? ` of ${size} MB${count > 1 ? ' each' : ''}` : ''}.`,
+        formats: (list: string) => `Accepted formats: ${list}.`,
     },
     fr: {
         submit: 'Envoyer',
@@ -296,6 +312,16 @@ const MESSAGES = {
         next: 'Suivant',
         previous: 'Précédent',
         progress: (step: number, total: number) => `Étape ${step} sur ${total}`,
+        required: "Les champs marqués d'un astérisque (*) sont obligatoires.",
+        errors: (count: number) =>
+            count > 1
+                ? `Le formulaire contient ${count} erreurs.`
+                : 'Le formulaire contient 1 erreur.',
+        errorItem: (label: string, message: string) => `${label} : ${message}`,
+        captcha: "Cochez la case de vérification avant d'envoyer.",
+        files: (count: number, size?: number) =>
+            `Jusqu'à ${count} fichier${count > 1 ? 's' : ''}${size ? ` de ${size} Mo${count > 1 ? ' chacun' : ''}` : ''}.`,
+        formats: (list: string) => `Formats acceptés : ${list}.`,
     },
 };
 
@@ -456,9 +482,45 @@ export const CLASSES = {
     submit: 'cf-submit',
 };
 
+/** Autofill purpose deduced from the field type when the form does not set one. */
+const AUTOCOMPLETE: Record<string, string | undefined> = {
+    email: 'email',
+    tel: 'tel',
+    url: 'url',
+};
+
+/**
+ * The constraints of a file field written out ("Up to 3 files of 10 MB each. Accepted formats: PDF, JPG."),
+ * in the form's language; undefined for other fields or a file field without limits.
+ */
+export function fieldHint(
+    field: PublicField,
+    locale?: string | null,
+): string | undefined {
+    const {
+        max_files: count = 1,
+        max_size: size,
+        accept = [],
+    } = field.rules ?? {};
+    if (field.type !== 'file' || (count <= 1 && !size && !accept.length)) {
+        return undefined;
+    }
+    const ui = defaultMessages(locale);
+    return [
+        count > 1 || size ? ui.files(count, size) : '',
+        accept.length
+            ? ui.formats(accept.map((ext) => ext.toUpperCase()).join(', '))
+            : '',
+    ]
+        .filter(Boolean)
+        .join(' ');
+}
+
 /**
  * A field's control described without DOM or framework (tag, attributes, choices): the shared basis for
- * rendering in mountForm and the React and Vue components.
+ * rendering in mountForm and the React and Vue components. With `error`, the control is marked invalid
+ * and described by its message (id `cf-<key>-error`), as well as by its help (`cf-<key>-help`) and, for a
+ * file, its constraints (`cf-<key>-hint`).
  */
 export type FieldControl = {
     tag: 'input' | 'textarea' | 'select' | 'choices';
@@ -468,54 +530,92 @@ export type FieldControl = {
         name: string;
         value: string;
         label: string;
+        required: boolean;
     }[];
 };
 
-export function fieldControl(field: PublicField): FieldControl {
+export function fieldControl(
+    field: PublicField,
+    error?: string | null,
+): FieldControl {
     const id = `cf-${field.key}`;
+    const describedBy = [
+        field.help && `${id}-help`,
+        fieldHint(field) && `${id}-hint`,
+        error && `${id}-error`,
+    ]
+        .filter(Boolean)
+        .join(' ');
+    const a11y = {
+        'aria-describedby': describedBy || undefined,
+        'aria-invalid': error ? 'true' : undefined,
+    };
     const base = {
         id,
         name: field.key,
         required: field.required,
-        placeholder: field.placeholder,
+        autocomplete: field.no_autofill
+            ? 'off'
+            : (field.autocomplete ?? AUTOCOMPLETE[field.type]),
+        ...a11y,
     };
     const options = field.options ?? [];
 
     switch (field.type) {
         case 'textarea':
-            return { tag: 'textarea', attrs: base, choices: [] };
-        case 'select':
             return {
-                tag: 'select',
-                attrs: { id, name: field.key, required: field.required },
+                tag: 'textarea',
+                attrs: { ...base, placeholder: field.placeholder },
                 choices: [],
             };
+        case 'select':
+            return { tag: 'select', attrs: base, choices: [] };
         case 'radio':
-        case 'checkboxes':
+        case 'checkboxes': {
+            const radio = field.type === 'radio';
+            // The group is named by the field's label (an element with id cf-<key>-label, not a <label for>)
             return {
                 tag: 'choices',
-                attrs: { role: 'group', 'aria-labelledby': `${id}-label` },
+                attrs: {
+                    id,
+                    role: radio ? 'radiogroup' : 'group',
+                    'aria-labelledby': `${id}-label`,
+                    'aria-required': field.required ? 'true' : undefined,
+                    ...a11y,
+                },
                 choices: options.map((option) => ({
-                    type: field.type === 'radio' ? 'radio' : 'checkbox',
-                    name: field.type === 'radio' ? field.key : `${field.key}[]`,
+                    type: radio ? 'radio' : 'checkbox',
+                    name: radio ? field.key : `${field.key}[]`,
                     value: option.value,
                     label: option.label,
+                    required: radio && field.required,
                 })),
             };
-        default: {
-            const types = [
-                'email',
-                'url',
-                'tel',
-                'number',
-                'date',
-                'file',
-                'checkbox',
-            ];
+        }
+        case 'file': {
+            const { max_files = 1, accept = [] } = field.rules ?? {};
             return {
                 tag: 'input',
                 attrs: {
                     ...base,
+                    autocomplete: undefined,
+                    type: 'file',
+                    name: max_files > 1 ? `${field.key}[]` : field.key,
+                    multiple: max_files > 1,
+                    accept: accept.length
+                        ? accept.map((ext) => `.${ext}`).join(',')
+                        : undefined,
+                },
+                choices: [],
+            };
+        }
+        default: {
+            const types = ['email', 'url', 'tel', 'number', 'date', 'checkbox'];
+            return {
+                tag: 'input',
+                attrs: {
+                    ...base,
+                    placeholder: field.placeholder,
                     type: types.includes(field.type) ? field.type : 'text',
                     value: field.type === 'checkbox' ? '1' : undefined,
                 },
@@ -525,85 +625,81 @@ export function fieldControl(field: PublicField): FieldControl {
     }
 }
 
-/** A field as unstyled HTML: label, control, help text. Exported to compose your own rendering. */
-export function renderField(field: PublicField): HTMLElement {
-    const el = <K extends keyof HTMLElementTagNameMap>(
-        tag: K,
-        props: Record<string, string | boolean | undefined> = {},
-        text?: string,
-    ) => {
-        const node = document.createElement(tag);
-        for (const [name, value] of Object.entries(props)) {
-            if (value === true) node.setAttribute(name, '');
-            else if (typeof value === 'string') node.setAttribute(name, value);
-        }
-        if (text) node.textContent = text;
-        return node;
-    };
-    const id = `cf-${field.key}`;
-    const common = {
-        id,
-        name: field.key,
-        required: field.required,
-        placeholder: field.placeholder,
-    };
-    let control: HTMLElement;
+/** Builds a DOM element from attributes (true = empty attribute, false / undefined = absent). */
+function el<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    props: Record<string, string | boolean | undefined> = {},
+    text?: string,
+): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    for (const [name, value] of Object.entries(props)) {
+        if (value === true) node.setAttribute(name, '');
+        else if (typeof value === 'string') node.setAttribute(name, value);
+    }
+    if (text) node.textContent = text;
+    return node;
+}
 
-    if (field.type === 'textarea') {
-        control = el('textarea', common);
-    } else if (field.type === 'select') {
-        control = el('select', {
-            id,
-            name: field.key,
-            required: field.required,
-        });
-        control.append(el('option', { value: '' }, ''));
+/**
+ * A field as unstyled HTML: label (with `*` when required), control, help text and file constraints.
+ * Exported to compose your own rendering; `locale` is the form's language (texts of the constraints).
+ */
+export function renderField(
+    field: PublicField,
+    locale?: string | null,
+): HTMLElement {
+    const id = `cf-${field.key}`;
+    const control = fieldControl(field);
+    const input = el(
+        control.tag === 'choices' ? 'div' : control.tag,
+        control.attrs,
+    );
+
+    if (control.tag === 'select') {
+        input.append(el('option', { value: '' }, ''));
         for (const option of field.options ?? []) {
-            control.append(el('option', { value: option.value }, option.label));
+            input.append(el('option', { value: option.value }, option.label));
         }
-    } else if (field.type === 'radio' || field.type === 'checkboxes') {
-        control = el('div', {
-            role: 'group',
-            'aria-labelledby': `${id}-label`,
-        });
-        for (const option of field.options ?? []) {
-            const choice = el('label');
-            choice.append(
-                el('input', {
-                    type: field.type === 'radio' ? 'radio' : 'checkbox',
-                    name: field.type === 'radio' ? field.key : `${field.key}[]`,
-                    value: option.value,
-                }),
-                ` ${option.label}`,
-            );
-            control.append(choice);
-        }
-    } else {
-        const types = [
-            'email',
-            'url',
-            'tel',
-            'number',
-            'date',
-            'file',
-            'checkbox',
-        ];
-        control = el('input', {
-            ...common,
-            type: types.includes(field.type) ? field.type : 'text',
-            value: field.type === 'checkbox' ? '1' : undefined,
-        });
+    }
+    for (const choice of control.choices) {
+        const label = el('label');
+        label.append(
+            el('input', {
+                type: choice.type,
+                name: choice.name,
+                value: choice.value,
+                required: choice.required,
+            }),
+            ` ${choice.label}`,
+        );
+        input.append(label);
     }
 
+    // A group of choices is named by aria-labelledby: a <label for> would point to no control
+    const label = el(
+        control.tag === 'choices' ? 'span' : 'label',
+        { id: `${id}-label`, for: control.tag === 'choices' ? undefined : id },
+        field.label,
+    );
+    if (field.required) {
+        label.append(
+            ' ',
+            el('span', { class: 'cf-required', 'aria-hidden': 'true' }, '*'),
+        );
+    }
     const wrapper = el('div', {
         'data-key': field.key,
         'data-type': field.type,
     });
-    wrapper.append(
-        el('label', { id: `${id}-label`, for: id }, field.label),
-        control,
-    );
-    if (field.help) wrapper.append(el('small', {}, field.help));
+    wrapper.append(label, input);
+    if (field.help)
+        wrapper.append(el('small', { id: `${id}-help` }, field.help));
+    const hint = fieldHint(field, locale);
+    if (hint) {
+        wrapper.append(
+            el('small', { id: `${id}-hint`, class: 'cf-hint' }, hint),
+        );
+    }
 
     return wrapper;
 }
@@ -650,14 +746,14 @@ export async function mountForm(
         throw exception;
     }
     const ui = defaultMessages(definition.locale);
-    const text = (tag: 'p' | 'button', className: string, content: string) => {
-        const node = document.createElement(tag);
-        node.className = className;
-        node.textContent = content;
-        return node;
-    };
+    const text = (
+        tag: 'p' | 'button' | 'span' | 'h2',
+        className: string,
+        content: string,
+    ) => el(tag, { class: className }, content);
     const element = document.createElement('form');
     element.className = classes.form;
+    element.lang = definition.locale;
     const destroy = () => root.replaceChildren();
 
     if (!definition.open) {
@@ -666,28 +762,50 @@ export async function mountForm(
             classes.closed,
             definition.closed_message ?? options.messages?.closed ?? ui.closed,
         );
+        closed.lang = definition.locale;
         root.replaceChildren(closed);
         return { definition, element, destroy };
     }
 
-    // One section per step; only one visible at a time
+    // Summary of the errors refused by the server, focused after a failed submission
+    const summary = el('div', {
+        class: 'cf-error-summary',
+        tabindex: '-1',
+        hidden: true,
+    });
+    element.append(summary);
+    if (definition.fields.some((field) => field.required)) {
+        element.append(text('p', 'cf-required-notice', ui.required));
+    }
+
+    // One section per step, named by its title (with "Step x of y"); only one visible at a time
     const allSteps = stepsOf(definition);
     const multiStep = allSteps.length > 1;
     for (const step of allSteps) {
-        const section = document.createElement('section');
-        section.className = 'cf-step';
-        section.dataset.step = step.key;
-        if (multiStep && step.title)
-            section.append(text('p', 'cf-step-title', step.title));
+        const section = el('section', {
+            class: 'cf-step',
+            'data-step': step.key,
+        });
+        if (multiStep) {
+            const heading = el('h2', {
+                class: 'cf-step-title',
+                id: `cf-step-${step.key}`,
+                tabindex: '-1',
+            });
+            heading.append(text('span', 'cf-progress', ''));
+            if (step.title) {
+                heading.append(' ', text('span', 'cf-step-name', step.title));
+            }
+            section.setAttribute('aria-labelledby', heading.id);
+            section.append(heading);
+        }
         for (const field of step.fields) {
-            const fallback = renderField(field);
+            const fallback = renderField(field, definition.locale);
             fallback.classList.add(classes.field);
             section.append(options.renderField?.(field, fallback) ?? fallback);
         }
         element.append(section);
     }
-    const progress = text('p', 'cf-progress', '');
-    if (multiStep) element.prepend(progress);
     let current = 0;
     let visibleSteps = allSteps;
 
@@ -713,8 +831,18 @@ export async function mountForm(
         )) {
             section.hidden = section.dataset.step !== active;
         }
+        visibleSteps.forEach((step, index) => {
+            const progress = element.querySelector(
+                `[data-step="${step.key}"] .cf-progress`,
+            );
+            if (progress) {
+                progress.textContent = ui.progress(
+                    index + 1,
+                    visibleSteps.length,
+                );
+            }
+        });
         const last = current === visibleSteps.length - 1;
-        progress.textContent = ui.progress(current + 1, visibleSteps.length);
         previous.hidden = current === 0;
         next.hidden = last;
         button.hidden = !last;
@@ -724,21 +852,38 @@ export async function mountForm(
         element.querySelector<HTMLElement>(
             `[data-step="${visibleSteps[current]?.key}"]`,
         );
+    const stepOf = (key: string) =>
+        visibleSteps.findIndex((step) =>
+            step.fields.some((field) => field.key === key),
+        );
+    /** Shows the step of a field and focuses its control (first choice of a group). */
+    const focusField = (key: string) => {
+        const step = stepOf(key);
+        if (step >= 0) current = step;
+        applyConditions();
+        element
+            .querySelector<HTMLElement>(
+                `[data-key="${key}"] :is(input, select, textarea)`,
+            )
+            ?.focus();
+    };
+    // Moving between steps focuses the step's title, so that "Step x of y" is read out
     const go = (offset: number) => {
         current = Math.max(
             0,
             Math.min(visibleSteps.length - 1, current + offset),
         );
         applyConditions();
-        activeSection()
-            ?.querySelector<HTMLElement>('input, select, textarea')
-            ?.focus();
+        activeSection()?.querySelector<HTMLElement>('.cf-step-title')?.focus();
     };
 
-    const captchaSlot = document.createElement('div');
-    captchaSlot.className = 'cf-captcha';
+    const captchaError = text('p', classes.error, ui.captcha);
+    captchaError.id = 'cf-captcha-error';
+    captchaError.setAttribute('role', 'alert');
+    captchaError.hidden = true;
+    const captchaSlot = el('div', { class: 'cf-captcha' });
     if (definition.hcaptcha) {
-        element.append(captchaSlot);
+        element.append(captchaError, captchaSlot);
         void renderCaptcha(captchaSlot, definition).catch(
             (exception: unknown) => {
                 error.textContent = (exception as Error).message;
@@ -775,6 +920,78 @@ export async function mountForm(
     element.addEventListener('change', applyConditions);
     applyConditions();
 
+    /** Removes the messages of the previous attempt and the invalid state of the controls. */
+    const clearErrors = () => {
+        error.hidden = true;
+        summary.hidden = true;
+        summary.replaceChildren();
+        element
+            .querySelectorAll('.cf-field-error')
+            .forEach((node) => node.remove());
+        for (const control of element.querySelectorAll('[aria-invalid]')) {
+            control.removeAttribute('aria-invalid');
+            const ids = (control.getAttribute('aria-describedby') ?? '')
+                .split(' ')
+                .filter((id) => id && !id.endsWith('-error'))
+                .join(' ');
+            if (ids) control.setAttribute('aria-describedby', ids);
+            else control.removeAttribute('aria-describedby');
+        }
+    };
+    /** Message below each rejected field, linked to its control, then a summary or the field focused. */
+    const showErrors = (byField: Record<string, string>) => {
+        const shown = definition.fields.filter(
+            (field) =>
+                field.key in byField &&
+                element.querySelector(`[data-key="${field.key}"]`),
+        );
+        for (const field of shown) {
+            const id = `cf-${field.key}`;
+            element.querySelector(`[data-key="${field.key}"]`)?.append(
+                el(
+                    'p',
+                    {
+                        id: `${id}-error`,
+                        class: `${classes.error} cf-field-error`,
+                    },
+                    byField[field.key],
+                ),
+            );
+            const control = element.querySelector(`[id="${id}"]`);
+            control?.setAttribute('aria-invalid', 'true');
+            control?.setAttribute(
+                'aria-describedby',
+                `${control.getAttribute('aria-describedby') ?? ''} ${id}-error`.trim(),
+            );
+        }
+        if (shown.length > 1) {
+            const list = el('ul');
+            for (const field of shown) {
+                const link = el(
+                    'a',
+                    { href: `#cf-${field.key}` },
+                    ui.errorItem(field.label, byField[field.key]),
+                );
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    focusField(field.key);
+                });
+                const item = el('li');
+                item.append(link);
+                list.append(item);
+            }
+            summary.append(el('p', {}, ui.errors(shown.length)), list);
+            summary.hidden = false;
+            const step = stepOf(shown[0].key);
+            if (step >= 0) current = step;
+            applyConditions();
+            summary.focus();
+        } else if (shown.length) {
+            focusField(shown[0].key);
+        }
+        return shown.length > 0;
+    };
+
     const submit = async (event: Event) => {
         event.preventDefault();
         // Enter on an intermediate step: move to the next one instead of sending
@@ -782,11 +999,18 @@ export async function mountForm(
             next.click();
             return;
         }
+        clearErrors();
+        // Anti-robot check not done (or expired): say so next to it instead of sending
+        captchaError.hidden =
+            !definition.hcaptcha ||
+            Boolean(new FormData(element).get('h-captcha-response'));
+        // Described by the message only while it shows (a hidden description is still read out)
+        if (!captchaError.hidden) {
+            captchaSlot.setAttribute('aria-describedby', captchaError.id);
+            return;
+        }
+        captchaSlot.removeAttribute('aria-describedby');
         button.toggleAttribute('disabled', true);
-        error.hidden = true;
-        element
-            .querySelectorAll('.cf-field-error')
-            .forEach((node) => node.remove());
         try {
             const data = new FormData(element);
             const prepared = (await options.beforeSubmit?.(data)) ?? data;
@@ -798,47 +1022,35 @@ export async function mountForm(
             if (options.onSubmitted) {
                 options.onSubmitted(id, element);
             } else {
-                root.replaceChildren(
-                    text(
-                        'p',
-                        classes.success,
-                        definition.success_message ??
-                            options.messages?.success ??
-                            ui.success,
-                    ),
+                // The thank-you message replaces the form and takes the focus, so that it is read out
+                const success = el(
+                    'p',
+                    {
+                        class: classes.success,
+                        role: 'status',
+                        tabindex: '-1',
+                        lang: definition.locale,
+                    },
+                    definition.success_message ??
+                        options.messages?.success ??
+                        ui.success,
                 );
+                root.replaceChildren(success);
+                success.focus();
             }
         } catch (exception) {
             const failure = exception as CanardFormError | Error;
             if (options.onError) {
                 options.onError(failure, element);
-            } else {
-                const byField =
+            } else if (
+                !showErrors(
                     failure instanceof CanardFormError
                         ? fieldErrors(failure.errors)
-                        : {};
-                // Error below each rejected field, and back to the step of the first one
-                for (const [key, message] of Object.entries(byField)) {
-                    element
-                        .querySelector(`[data-key="${key}"]`)
-                        ?.append(
-                            text(
-                                'p',
-                                `${classes.error} cf-field-error`,
-                                message,
-                            ),
-                        );
-                }
-                const step = visibleSteps.findIndex((candidate) =>
-                    candidate.fields.some((field) => field.key in byField),
-                );
-                if (step >= 0) {
-                    go(step - current);
-                } else {
-                    error.textContent =
-                        options.messages?.error ?? failure.message;
-                    error.hidden = false;
-                }
+                        : {},
+                )
+            ) {
+                error.textContent = options.messages?.error ?? failure.message;
+                error.hidden = false;
             }
             button.toggleAttribute('disabled', false);
             resetCaptcha(element);

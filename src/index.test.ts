@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     CanardFormError,
     defaultMessages,
+    fieldControl,
     getForm,
     mountForm,
     renderCaptcha,
+    renderField,
     submitForm,
 } from './index';
 
@@ -270,16 +272,19 @@ describe('older browsers', () => {
 });
 
 describe('anti-robot check on your own site (hCaptcha)', () => {
-    it('renders the widget in the form, then resets it after a refused answer', async () => {
+    it('renders the widget, asks for it when unchecked, then resets it after a refused answer', async () => {
         document.body.innerHTML = '<div id="slot"></div>';
         const rendered: Array<{ sitekey: string; hl: string }> = [];
         const reset = vi.fn();
         (window as unknown as { hcaptcha: unknown }).hcaptcha = {
             render: (
-                _element: HTMLElement,
+                container: HTMLElement,
                 options: { sitekey: string; hl: string },
             ) => {
                 rendered.push(options);
+                // Like the widget: the token field stays empty until the box is checked
+                container.innerHTML =
+                    '<textarea name="h-captcha-response"></textarea>';
                 return 'w1';
             },
             reset,
@@ -316,7 +321,32 @@ describe('anti-robot check on your own site (hCaptcha)', () => {
                 .hcaptchaWidgetId,
         ).toBe('w1');
 
+        // Not checked: the button stays usable, the message says what to do, nothing is sent
         element.dispatchEvent(new Event('submit'));
+        const message =
+            element.querySelector<HTMLElement>('#cf-captcha-error')!;
+        expect(message.hidden).toBe(false);
+        expect(message.textContent).toBe(
+            "Cochez la case de vérification avant d'envoyer.",
+        );
+        expect(
+            element
+                .querySelector('.cf-captcha')!
+                .getAttribute('aria-describedby'),
+        ).toBe('cf-captcha-error');
+        expect(
+            element.querySelector('.cf-submit')!.hasAttribute('disabled'),
+        ).toBe(false);
+        expect(fetch).toHaveBeenCalledTimes(1);
+
+        element.querySelector('textarea')!.value = 'token';
+        element.dispatchEvent(new Event('submit'));
+        expect(message.hidden).toBe(true);
+        expect(
+            element
+                .querySelector('.cf-captcha')!
+                .hasAttribute('aria-describedby'),
+        ).toBe(false);
         await vi.waitFor(() => expect(reset).toHaveBeenCalledWith('w1'));
         delete (window as unknown as { hcaptcha?: unknown }).hcaptcha;
     });
@@ -491,5 +521,251 @@ describe('mountForm when the form cannot be shown', () => {
             'This form cannot be shown right now. Please try again later.',
         );
         expect(fallback.getAttribute('role')).toBe('alert');
+    });
+});
+
+describe('accessibility', () => {
+    const definition = (fields: unknown[], extra: object = {}) =>
+        reply(200, { id: 'f1', locale: 'fr', open: true, fields, ...extra });
+
+    it('fills the autocomplete attribute from the form, the type, or turns it off', () => {
+        const field = (extra: object) =>
+            fieldControl({
+                key: 'k',
+                type: 'text',
+                label: 'K',
+                required: false,
+                ...extra,
+            }).attrs.autocomplete;
+
+        expect(field({ autocomplete: 'postal-code' })).toBe('postal-code');
+        expect(field({ type: 'email' })).toBe('email');
+        expect(field({ type: 'tel' })).toBe('tel');
+        expect(field({ type: 'url' })).toBe('url');
+        expect(field({})).toBeUndefined();
+        expect(
+            field({ type: 'email', autocomplete: 'email', no_autofill: true }),
+        ).toBe('off');
+        expect(
+            renderField({
+                key: 'zip',
+                type: 'text',
+                label: 'CP',
+                required: false,
+                autocomplete: 'postal-code',
+            })
+                .querySelector('input')!
+                .getAttribute('autocomplete'),
+        ).toBe('postal-code');
+    });
+
+    it('marks required fields, names groups and links help and file constraints', async () => {
+        document.body.innerHTML = '<div id="slot"></div>';
+        const fetch = vi.fn<typeof globalThis.fetch>().mockReturnValueOnce(
+            definition([
+                {
+                    key: 'name',
+                    type: 'text',
+                    label: 'Nom',
+                    help: 'Tel qu’écrit sur la facture',
+                    required: true,
+                },
+                {
+                    key: 'size',
+                    type: 'radio',
+                    label: 'Taille',
+                    required: true,
+                    options: [
+                        { value: 's', label: 'S' },
+                        { value: 'm', label: 'M' },
+                    ],
+                },
+                {
+                    key: 'days',
+                    type: 'checkboxes',
+                    label: 'Jours',
+                    required: false,
+                    options: [{ value: 'mon', label: 'Lundi' }],
+                },
+                {
+                    key: 'docs',
+                    type: 'file',
+                    label: 'Documents',
+                    required: false,
+                    rules: {
+                        max_files: 3,
+                        max_size: 10,
+                        accept: ['pdf', 'jpg'],
+                    },
+                },
+            ]),
+        );
+
+        const { element } = await mountForm('#slot', 'f1', { fetch });
+
+        expect(element.lang).toBe('fr');
+        expect(element.querySelector('.cf-required-notice')!.textContent).toBe(
+            "Les champs marqués d'un astérisque (*) sont obligatoires.",
+        );
+        const label = element.querySelector('label[for="cf-name"]')!;
+        expect(label.querySelector('[aria-hidden="true"]')!.textContent).toBe(
+            '*',
+        );
+        expect(
+            element.querySelector('#cf-name')!.getAttribute('aria-describedby'),
+        ).toBe('cf-name-help');
+        expect(element.querySelector('#cf-name-help')!.textContent).toBe(
+            'Tel qu’écrit sur la facture',
+        );
+
+        // Groups: named by aria-labelledby, no <label for> pointing nowhere
+        const size = element.querySelector('#cf-size')!;
+        expect(size.getAttribute('role')).toBe('radiogroup');
+        expect(size.getAttribute('aria-required')).toBe('true');
+        expect(element.querySelector('#cf-size-label')!.tagName).toBe('SPAN');
+        expect(
+            [
+                ...element.querySelectorAll<HTMLInputElement>('[name="size"]'),
+            ].every((radio) => radio.required),
+        ).toBe(true);
+        expect(element.querySelector('#cf-days')!.getAttribute('role')).toBe(
+            'group',
+        );
+        for (const node of element.querySelectorAll('label[for]')) {
+            expect(
+                element.querySelector(`[id="${node.getAttribute('for')!}"]`),
+            ).not.toBeNull();
+        }
+
+        const docs = element.querySelector<HTMLInputElement>('#cf-docs')!;
+        expect(docs.getAttribute('aria-describedby')).toBe('cf-docs-hint');
+        expect(docs.multiple).toBe(true);
+        expect(docs.accept).toBe('.pdf,.jpg');
+        expect(element.querySelector('#cf-docs-hint')!.textContent).toBe(
+            "Jusqu'à 3 fichiers de 10 Mo chacun. Formats acceptés : PDF, JPG.",
+        );
+    });
+
+    it('focuses the step title on Next, then the thank-you message', async () => {
+        document.body.innerHTML = '<div id="slot"></div>';
+        const fetch = vi
+            .fn<typeof globalThis.fetch>()
+            .mockReturnValueOnce(
+                definition(
+                    [
+                        { key: 'a', type: 'text', label: 'A', required: false },
+                        { key: 'b', type: 'text', label: 'B', required: false },
+                    ],
+                    {
+                        steps: [
+                            { key: 's1', title: 'Vous', fields: ['a'] },
+                            { key: 's2', title: 'Projet', fields: ['b'] },
+                        ],
+                    },
+                ),
+            )
+            .mockReturnValueOnce(reply(201, { submission_id: 's1' }));
+
+        const { element } = await mountForm('#slot', 'f1', { fetch });
+        expect(element.querySelector('.cf-required-notice')).toBeNull();
+        const second = element.querySelector('[data-step="s2"]')!;
+        expect(second.tagName).toBe('SECTION');
+        expect(second.getAttribute('aria-labelledby')).toBe('cf-step-s2');
+
+        element.querySelector<HTMLButtonElement>('.cf-next')!.click();
+        expect(document.activeElement).toBe(
+            element.querySelector('#cf-step-s2'),
+        );
+        expect(document.activeElement!.textContent).toBe(
+            'Étape 2 sur 2 Projet',
+        );
+
+        element.dispatchEvent(new Event('submit'));
+        await vi.waitFor(() =>
+            expect(document.activeElement?.className).toBe('cf-success'),
+        );
+        expect(document.activeElement!.getAttribute('role')).toBe('status');
+    });
+
+    it('links each refused field to its message, sums them up, and clears them', async () => {
+        document.body.innerHTML = '<div id="slot"></div>';
+        const fetch = vi
+            .fn<typeof globalThis.fetch>()
+            .mockReturnValueOnce(
+                definition([
+                    {
+                        key: 'email',
+                        type: 'email',
+                        label: 'E-mail',
+                        required: false,
+                        help: 'Pro',
+                    },
+                    {
+                        key: 'size',
+                        type: 'radio',
+                        label: 'Taille',
+                        required: false,
+                        options: [{ value: 's', label: 'S' }],
+                    },
+                ]),
+            )
+            .mockReturnValueOnce(
+                reply(422, {
+                    error: 'validation_failed',
+                    errors: {
+                        'answers.email': ['Adresse refusée'],
+                        'answers.size': ['Choisissez une taille'],
+                    },
+                }),
+            )
+            .mockReturnValueOnce(
+                reply(422, {
+                    error: 'validation_failed',
+                    errors: { 'answers.size': ['Choisissez une taille'] },
+                }),
+            );
+
+        const { element } = await mountForm('#slot', 'f1', { fetch });
+        const email = element.querySelector('#cf-email')!;
+        const size = element.querySelector('#cf-size')!;
+
+        element.dispatchEvent(new Event('submit'));
+        const summary =
+            element.querySelector<HTMLElement>('.cf-error-summary')!;
+        await vi.waitFor(() => expect(document.activeElement).toBe(summary));
+        expect(summary.querySelector('p')!.textContent).toBe(
+            'Le formulaire contient 2 erreurs.',
+        );
+        const links = [...summary.querySelectorAll('a')];
+        expect(
+            links.map((link) => [link.getAttribute('href'), link.textContent]),
+        ).toEqual([
+            ['#cf-email', 'E-mail : Adresse refusée'],
+            ['#cf-size', 'Taille : Choisissez une taille'],
+        ]);
+        expect(email.getAttribute('aria-invalid')).toBe('true');
+        expect(email.getAttribute('aria-describedby')).toBe(
+            'cf-email-help cf-email-error',
+        );
+        expect(element.querySelector('#cf-email-error')!.textContent).toBe(
+            'Adresse refusée',
+        );
+        expect(size.getAttribute('aria-invalid')).toBe('true');
+        expect(size.getAttribute('aria-describedby')).toBe('cf-size-error');
+
+        links[1].click();
+        expect(document.activeElement).toBe(size.querySelector('input'));
+
+        // A single error: no summary, the field gets the focus; the fixed field is valid again
+        (document.activeElement as HTMLElement).blur();
+        element.dispatchEvent(new Event('submit'));
+        await vi.waitFor(() =>
+            expect(document.activeElement).toBe(size.querySelector('input')),
+        );
+        expect(summary.hidden).toBe(true);
+        expect(email.hasAttribute('aria-invalid')).toBe(false);
+        expect(email.getAttribute('aria-describedby')).toBe('cf-email-help');
+        expect(element.querySelector('#cf-email-error')).toBeNull();
+        expect(element.querySelectorAll('#cf-size-error')).toHaveLength(1);
     });
 });

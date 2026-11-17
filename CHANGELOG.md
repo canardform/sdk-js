@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `autocomplete`, `no_autofill` and file `rules` on `PublicField`; controls get an `autocomplete` attribute
+  (`off`, the field's value, or `email` / `tel` / `url` from the type). `fieldHint()` writes out the
+  constraints of a file field.
+- Accessibility (WCAG 2.2 AA / RGAA 4.1) in `mountForm` and the React and Vue components: `lang` on the
+  form, required fields marked with an asterisk and explained, groups of choices named by
+  `aria-labelledby` (`radiogroup`, `aria-required`), help and file constraints linked by
+  `aria-describedby`, errors linked to their field with `aria-invalid`, an error summary that takes the
+  focus, steps named by a focused `<h2>` ("Step x of y"), focused thank-you message.
+- Bot check not done or expired: a message next to the widget instead of sending (`captchaError`).
+- `showField(key)` on the controller, hook and composable.
+
+### Changed
+
+- The step progress (`cf-progress`) is now inside each step's `<h2 class="cf-step-title">`, with the
+  title in `cf-step-name`.
+- A group of radios or checkboxes is labelled by a `<span id="cf-<key>-label">` instead of a
+  `<label for>` pointing to no control.
+- A file field accepting several files is named `<key>[]` and has `multiple`.
+
 ## [1.0.0-alpha.1] - 2026-11-10
 
 First public pre-release.
