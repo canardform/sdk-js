@@ -1,6 +1,6 @@
 {
     "name": "@canardform/sdk",
-    "version": "1.0.0-alpha.1",
+    "version": "1.0.0-alpha.2",
     "description": "Send answers to Canard Form from your own website: plain HTML, JavaScript, React, Vue and server-side rendering.",
     "keywords": [
         "canard-form",

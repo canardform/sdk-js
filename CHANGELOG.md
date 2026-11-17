@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-alpha.2] - 2026-11-17
+
 ### Added
 
 - `autocomplete`, `no_autofill` and file `rules` on `PublicField`; controls get an `autocomplete` attribute
@@ -44,5 +46,6 @@ First public pre-release.
   server shows a fallback (`cf-unavailable`, `messages.unavailable`, Vue `#unavailable` slot) instead of
   an empty spot or an endless loading state.
 
-[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.1...HEAD
+[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.2...HEAD
+[1.0.0-alpha.2]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/canardform/sdk-js/releases/tag/v1.0.0-alpha.1

@@ -29,7 +29,7 @@ Or without a build tool, from jsDelivr (pin the exact version during the alpha: 
 
 ```html
 <script type="module">
-  import { mountForm } from 'https://cdn.jsdelivr.net/npm/@canardform/sdk@1.0.0-alpha.1/+esm';
+  import { mountForm } from 'https://cdn.jsdelivr.net/npm/@canardform/sdk@1.0.0-alpha.2/+esm';
   mountForm('#contact', 'ID');
 </script>
 ```
