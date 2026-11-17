@@ -119,7 +119,7 @@ await submitForm('ID', data, { idempotencyKey: order.id }); // retry without dup
 
 `getForm('ID', { lang })` reads the published form without a key, as a `PublicForm`: `id`, `locale`, `open`, `fields`, `steps`, `submit_label`, `success_message`, `closed_message` and `hcaptcha`. It throws a `CanardFormError` with `not_found` when the form cannot be read.
 
-Each field (`PublicField`) has `key`, `type`, `label`, `required` and, when set, `help`, `placeholder`, `options`, `visible_if` (display condition), `autocomplete` (purpose for the browser's autofill, from a closed list: `name`, `given-name`, `family-name`, `email`, `tel`, `organization`, `organization-title`, `street-address`, `address-line1`, `address-line2`, `postal-code`, `address-level2`, `country-name`, `bday`, `url`, `language`), `no_autofill` and, for a file, `rules` (`max_files`, `max_size` in MB, `accept` extensions).
+Each field (`PublicField`) has `key`, `type`, `label`, `required` and, when set, `help`, `placeholder`, `options`, `visible_if` (display condition), `autocomplete` (purpose for the browser's autofill, from a closed list: `honorific-prefix`, `name`, `given-name`, `family-name`, `email`, `tel`, `organization`, `organization-title`, `street-address`, `address-line1`, `address-line2`, `postal-code`, `address-level2`, `address-level1`, `country-name`, `bday`, `url`, `language`), `no_autofill` and, for a file, `rules` (`max_files`, `max_size` in MB, `accept` extensions).
 
 The rendered `autocomplete` attribute is `off` when `no_autofill` is set, otherwise the field's `autocomplete`, otherwise `email`, `tel` or `url` for those types, otherwise none. It works in the browser and on the server, which is how [server-side rendering](./ssr) gets its `definition`.
 
