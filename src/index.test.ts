@@ -8,7 +8,9 @@ import {
     mountForm,
     renderCaptcha,
     renderField,
+    stepsOf,
     submitForm,
+    withHiddenValues,
 } from './index';
 
 const reply = (status: number, body: unknown) =>
@@ -184,6 +186,87 @@ describe('mountForm options', () => {
 
         mounted.destroy();
         expect(document.querySelector('#slot')!.childElementCount).toBe(0);
+    });
+});
+
+describe('hidden fields', () => {
+    const definition = {
+        id: 'f1',
+        locale: 'fr',
+        open: true,
+        steps: [
+            { key: 'main', title: null, fields: ['email', 'source'] },
+            { key: 'tracking', title: null, fields: ['campaign'] },
+        ],
+        fields: [
+            { key: 'email', type: 'email', label: 'E-mail', required: true },
+            {
+                key: 'source',
+                type: 'hidden',
+                label: 'Source',
+                required: false,
+                param: 'utm_source',
+                default: 'site',
+            },
+            {
+                key: 'campaign',
+                type: 'hidden',
+                label: 'Campagne',
+                required: false,
+            },
+        ],
+    };
+
+    it('are never shown, nor make a step of their own', () => {
+        const steps = stepsOf(definition);
+
+        expect(steps).toHaveLength(1);
+        expect(steps[0].fields.map((field) => field.key)).toEqual(['email']);
+    });
+
+    it('take the page address parameter, then the default, without overriding the site', () => {
+        window.history.replaceState(
+            null,
+            '',
+            '/?utm_source=newsletter&campaign=noel',
+        );
+        expect(withHiddenValues(definition as never, {})).toEqual({
+            source: 'newsletter',
+            campaign: 'noel',
+        });
+
+        window.history.replaceState(null, '', '/');
+        const data = new FormData();
+        data.set('campaign', 'printemps');
+        withHiddenValues(definition as never, data);
+        expect([data.get('source'), data.get('campaign')]).toEqual([
+            'site',
+            'printemps',
+        ]);
+    });
+
+    it('are sent by mountForm', async () => {
+        window.history.replaceState(null, '', '/?campaign=noel');
+        document.body.innerHTML = '<div id="slot"></div>';
+        const fetch = vi
+            .fn<typeof globalThis.fetch>()
+            .mockReturnValueOnce(reply(200, definition))
+            .mockReturnValueOnce(reply(201, { submission_id: 's1' }));
+        const onSubmitted = vi.fn();
+        const mounted = await mountForm('#slot', 'f1', { fetch, onSubmitted });
+
+        expect(document.querySelector('[data-key="source"]')).toBeNull();
+        (
+            document.querySelector('input[name="email"]') as HTMLInputElement
+        ).value = 'jean@example.com';
+        mounted.element.dispatchEvent(new Event('submit'));
+        await vi.waitFor(() => expect(onSubmitted).toHaveBeenCalled());
+        const body = fetch.mock.calls[1][1]!.body as FormData;
+        expect([body.get('source'), body.get('campaign')]).toEqual([
+            'site',
+            'noel',
+        ]);
+        window.history.replaceState(null, '', '/');
     });
 });
 

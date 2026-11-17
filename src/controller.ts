@@ -10,6 +10,7 @@ import {
     fieldErrors,
     validateStep,
     defaultMessages,
+    withHiddenValues,
 } from './index.js';
 import type {
     Answers,
@@ -131,10 +132,16 @@ export function createFormController(
     const submit = async (data: FormData | Record<string, unknown>) => {
         set({ status: 'sending', errors: {}, error: null, captchaError: null });
         try {
-            const id = await submitForm(formId, data, {
-                ...options,
-                lang: state.definition?.locale ?? options.lang,
-            });
+            const id = await submitForm(
+                formId,
+                state.definition
+                    ? withHiddenValues(state.definition, data)
+                    : data,
+                {
+                    ...options,
+                    lang: state.definition?.locale ?? options.lang,
+                },
+            );
             set({ status: 'sent', submissionId: id });
             return id;
         } catch (exception) {

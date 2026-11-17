@@ -134,7 +134,35 @@ export type PublicField = {
     no_autofill?: boolean;
     /** File field limits: number of files, size of each file in MB, accepted extensions. */
     rules?: { max_files?: number; max_size?: number; accept?: string[] };
+    /** Hidden field (`type: 'hidden'`): page address parameter that fills it, and its default value. */
+    param?: string;
+    default?: string;
 };
+
+/**
+ * Adds the value of each hidden field the data does not already carry: the page address parameter
+ * (`?utm_source=…`), otherwise the field's default. Never rendered, never blocking.
+ */
+export function withHiddenValues<T extends FormData | Record<string, unknown>>(
+    definition: PublicForm,
+    data: T,
+): T {
+    const query = new URLSearchParams(
+        // No address on the server (SSR): the default only
+        typeof location === 'undefined' ? '' : location.search,
+    );
+    for (const field of definition.fields) {
+        if (field.type !== 'hidden') continue;
+        const value = query.get(field.param ?? field.key) || field.default;
+        if (!value) continue;
+        if (data instanceof FormData) {
+            if (!data.get(field.key)) data.set(field.key, value);
+        } else if (!data[field.key]) {
+            data[field.key] = value;
+        }
+    }
+    return data;
+}
 
 /** A step of the form, in order (keys of its fields). */
 export type PublicStep = {
@@ -178,7 +206,10 @@ export function stepsOf(
         .map((step) => ({
             key: step.key,
             title: step.title,
-            fields: step.fields.flatMap((key) => byKey.get(key) ?? []),
+            // Hidden fields are never shown: sent on submission by withHiddenValues
+            fields: step.fields
+                .flatMap((key) => byKey.get(key) ?? [])
+                .filter((field) => field.type !== 'hidden'),
         }))
         .filter((step) =>
             step.fields.some((field) => !visible || visible.has(field.key)),
@@ -1012,7 +1043,7 @@ export async function mountForm(
         captchaSlot.removeAttribute('aria-describedby');
         button.toggleAttribute('disabled', true);
         try {
-            const data = new FormData(element);
+            const data = withHiddenValues(definition, new FormData(element));
             const prepared = (await options.beforeSubmit?.(data)) ?? data;
             const id = await submitForm(formId, prepared, {
                 ...options,
