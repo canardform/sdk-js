@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-alpha.4] - 2026-11-18
+
 ### Fixed
 
 - `mountForm`: `classes.field` accepts several classes (`'grid gap-2'`), like the other `classes` options;
@@ -64,7 +66,8 @@ First public pre-release.
   server shows a fallback (`cf-unavailable`, `messages.unavailable`, Vue `#unavailable` slot) instead of
   an empty spot or an endless loading state.
 
-[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.3...HEAD
+[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.4...HEAD
+[1.0.0-alpha.4]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.3...v1.0.0-alpha.4
 [1.0.0-alpha.3]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
 [1.0.0-alpha.2]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/canardform/sdk-js/releases/tag/v1.0.0-alpha.1
