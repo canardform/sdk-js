@@ -832,7 +832,10 @@ export async function mountForm(
         }
         for (const field of step.fields) {
             const fallback = renderField(field, definition.locale);
-            fallback.classList.add(classes.field);
+            // Several classes allowed ("grid gap-2"), like the other `classes` options
+            fallback.classList.add(
+                ...classes.field.split(/\s+/).filter(Boolean),
+            );
             section.append(options.renderField?.(field, fallback) ?? fallback);
         }
         element.append(section);

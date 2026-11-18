@@ -163,7 +163,7 @@ describe('mountForm options', () => {
 
         const mounted = await mountForm('#slot', 'f1', {
             fetch,
-            classes: { form: 'contact' },
+            classes: { form: 'contact', field: 'grid gap-2' },
             renderField: (field, element) => {
                 element.classList.add(`is-${field.type}`);
                 return element;
@@ -176,6 +176,7 @@ describe('mountForm options', () => {
 
         expect(mounted.element.className).toBe('contact');
         expect(document.querySelector('.is-email')).not.toBeNull();
+        expect(document.querySelector('.is-email.grid.gap-2')).not.toBeNull();
         mounted.element.dispatchEvent(new Event('submit'));
         await vi.waitFor(() =>
             expect(onSubmitted).toHaveBeenCalledWith('s9', mounted.element),

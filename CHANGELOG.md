@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `mountForm`: `classes.field` accepts several classes (`'grid gap-2'`), like the other `classes` options;
+  it used to throw and leave the form empty.
+
 ## [1.0.0-alpha.3] - 2026-11-17
 
 ### Added
