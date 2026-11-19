@@ -31,5 +31,5 @@ features:
 ---
 
 ::: warning Alpha
-The SDK is a pre-release (`1.0.0-alpha.2`): the API may change before 1.0.0.
+The SDK is a pre-release (`1.0.0-alpha.5`): the API may change before 1.0.0.
 :::

@@ -1,6 +1,323 @@
+/* Charte du site canardform.com (« ciel de dessin animé ») : encre, ciel, jaune canard, rouge et bleu de la poste
+   aérienne, titres en Archivo, texte en Inter. Les valeurs viennent de theme.css et site.css de la vitrine. */
+:root {
+    --cf-ink: #13213f;
+    --cf-ink-hover: #1c2d52;
+    --cf-sky: #0a4fc4;
+    --cf-night: #0b1630;
+    --cf-duck: #ffcc1a;
+    --cf-duck-hover: #ffd84d;
+    --cf-mail-red: #e2263f;
+    --cf-mail-blue: #1659c7;
+
+    --vp-font-family-base:
+        'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --cf-font-display:
+        'Archivo Variable', 'Archivo Fallback', var(--vp-font-family-base);
+
+    --vp-c-bg: #f4faff;
+    --vp-c-bg-alt: #eef4fa;
+    --vp-c-bg-elv: #ffffff;
+    --vp-c-bg-soft: #e3ebf5;
+    --vp-c-text-1: #13213f;
+    --vp-c-text-2: #3b4b68;
+    --vp-c-text-3: #4d5e7c;
+    --vp-c-divider: #d6e1ee;
+    --vp-c-gutter: #d6e1ee;
+    --vp-c-border: #7a8cab;
+
+    --vp-c-brand-1: #2a68ad;
+    --vp-c-brand-2: #1f4f86;
+    --vp-c-brand-3: #13213f;
+    --vp-c-brand-soft: #e6effa;
+
+    --vp-c-warning-soft: #fff8db;
+    --vp-c-danger-1: #c4213a;
+
+    --vp-button-brand-bg: var(--cf-ink);
+    --vp-button-brand-hover-bg: var(--cf-ink-hover);
+    --vp-button-brand-active-bg: var(--cf-ink-hover);
+    --vp-button-alt-bg: #ffffff;
+    --vp-button-alt-text: var(--cf-ink);
+    --vp-button-alt-hover-bg: #e6effa;
+    --vp-button-alt-hover-text: var(--cf-ink);
+    --vp-button-alt-active-bg: #e6effa;
+
+    --vp-sidebar-bg-color: #eef4fa;
+    --vp-nav-bg-color: var(--cf-sky);
+    --vp-nav-screen-bg-color: var(--cf-ink);
+    --vp-local-nav-bg-color: var(--vp-c-bg);
+
+    /* Extraits de code : toujours sur bleu nuit, comme sur la vitrine */
+    --vp-code-block-bg: var(--cf-night);
+    --vp-code-block-color: #c9d6ea;
+    --vp-code-block-divider-color: rgb(255 255 255 / 0.12);
+    --vp-code-lang-color: #9fb2d0;
+    --vp-code-line-number-color: #9fb2d0;
+    --vp-code-line-highlight-color: rgb(255 255 255 / 0.08);
+    --vp-code-copy-code-bg: #16254a;
+    --vp-code-copy-code-hover-bg: #1c2d52;
+    --vp-code-copy-code-border-color: rgb(255 255 255 / 0.12);
+    --vp-code-copy-code-hover-border-color: rgb(255 255 255 / 0.3);
+    --vp-code-copy-code-active-text: #c9d6ea;
+    --vp-code-copy-copied-text-color: #c9d6ea;
+    --vp-code-tab-bg: var(--cf-night);
+    --vp-code-tab-divider: rgb(255 255 255 / 0.12);
+    --vp-code-tab-text-color: #9fb2d0;
+    --vp-code-tab-hover-text-color: #ffffff;
+    --vp-code-tab-active-text-color: #ffffff;
+    --vp-code-tab-active-bar-color: var(--cf-duck);
+    --vp-code-color: #1f4f86;
+    --vp-code-bg: #e6effa;
+
+    --vp-home-hero-name-color: #ffffff;
+}
+
+/* Mode sombre : les jetons sombres de l'application (la vitrine n'en a pas) */
+.dark {
+    --vp-c-bg: #0d1a36;
+    --vp-c-bg-alt: #0b1630;
+    --vp-c-bg-elv: #12203f;
+    --vp-c-bg-soft: #18284b;
+    --vp-c-text-1: #f3f6fb;
+    --vp-c-text-2: #c9d6ea;
+    --vp-c-text-3: #a3b1c9;
+    --vp-c-divider: rgb(255 255 255 / 0.1);
+    --vp-c-gutter: rgb(255 255 255 / 0.1);
+    --vp-c-border: rgb(255 255 255 / 0.4);
+
+    --vp-c-brand-1: #7fb0e8;
+    --vp-c-brand-2: #a6c8f0;
+    --vp-c-brand-3: #2e6fb7;
+    --vp-c-brand-soft: rgb(127 176 232 / 0.16);
+
+    --vp-c-warning-soft: rgb(255 204 26 / 0.14);
+    --vp-c-danger-1: #e5485b;
+
+    --vp-button-brand-bg: var(--cf-duck);
+    --vp-button-brand-text: var(--cf-ink);
+    --vp-button-brand-hover-bg: var(--cf-duck-hover);
+    --vp-button-brand-hover-text: var(--cf-ink);
+    --vp-button-brand-active-bg: var(--cf-duck-hover);
+    --vp-button-brand-active-text: var(--cf-ink);
+    --vp-button-alt-bg: #18284b;
+    --vp-button-alt-text: #f3f6fb;
+    --vp-button-alt-hover-bg: #213560;
+    --vp-button-alt-hover-text: #ffffff;
+    --vp-button-alt-active-bg: #213560;
+
+    --vp-sidebar-bg-color: #0b1630;
+    --vp-nav-bg-color: var(--cf-night);
+    --vp-nav-screen-bg-color: var(--cf-night);
+
+    --vp-code-block-bg: #070f22;
+    --vp-code-color: #a6c8f0;
+    --vp-code-bg: rgb(127 176 232 / 0.16);
+}
+
+/* En attendant Archivo : Arial gras élargi à la même chasse, les titres ne se décalent pas à son arrivée */
+@font-face {
+    font-family: 'Archivo Fallback';
+    src:
+        local('Arial Bold'), local('Arial-BoldMT'), local('Arial'),
+        local('Roboto Bold'), local('Roboto');
+    font-weight: 700 900;
+    size-adjust: 122%;
+}
+
+body {
+    /* Inter : chiffres alignés en colonnes, « l » à crochet pour ne pas le confondre avec « I » */
+    font-feature-settings:
+        'tnum' 1,
+        'cv05' 1;
+}
+
+.vp-doc :is(h1, h2, h3),
+.VPHero :is(.name, .text),
+.VPFeature .title {
+    font-family: var(--cf-font-display);
+    font-stretch: 112%;
+    letter-spacing: -0.025em;
+}
+.vp-doc h1,
+.VPHero :is(.name, .text) {
+    font-weight: 900;
+}
+.vp-doc :is(h2, h3),
+.VPFeature .title {
+    font-weight: 800;
+}
+
+/* Liens du texte soulignés, comme sur la vitrine (pas seulement repérés par la couleur) */
+.vp-doc a {
+    text-underline-offset: 2px;
+}
+
+/* Boutons en pastille */
+.VPButton {
+    border-radius: 9999px !important;
+    font-weight: 800 !important;
+}
+
+/* Extraits de code : couleurs du thème sombre dans les deux modes, coins arrondis de la vitrine */
+.vp-doc [class*='language-'] code span {
+    color: var(--shiki-dark, inherit) !important;
+}
+@media (min-width: 640px) {
+    .vp-doc div[class*='language-'],
+    .vp-code-group .tabs {
+        border-radius: 1.25rem;
+    }
+    .vp-code-group .tabs {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+    .vp-code-group .tabs + .blocks div[class*='language-'] {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+}
+.vp-doc .custom-block {
+    border-radius: 1rem;
+}
+
+/* Menu : le bleu du ciel sur toutes les pages, liseré de poste aérienne tout en haut, logo sur pastille blanche */
+.VPNav {
+    --vp-c-text-1: #ffffff;
+    --vp-c-text-2: rgb(255 255 255 / 0.9);
+    --vp-c-text-3: rgb(255 255 255 / 0.9);
+    --vp-c-brand-1: var(--cf-duck);
+    --vp-c-divider: rgb(255 255 255 / 0.25);
+    --vp-c-gutter: transparent;
+    --vp-c-bg-alt: rgb(255 255 255 / 0.14);
+    --vp-c-bg-soft: rgb(255 255 255 / 0.14);
+    --vp-c-default-soft: rgb(255 255 255 / 0.14);
+    background: var(--vp-nav-bg-color);
+}
+.VPNav::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 1;
+    height: 5px;
+    background: repeating-linear-gradient(
+        135deg,
+        var(--cf-mail-red) 0 14px,
+        #fff 14px 22px,
+        var(--cf-mail-blue) 22px 36px,
+        #fff 36px 44px
+    );
+}
+.VPNav .VPNavBar,
+.VPNav .VPNavBar .content-body,
+.VPNav .VPNavBar .title {
+    background: transparent !important;
+}
+.VPNav .VPNavBar .divider {
+    display: none;
+}
+.VPNavBarTitle .title {
+    border-bottom: 0 !important;
+}
+.VPNavBarTitle .title {
+    gap: 10px;
+    font-family: var(--cf-font-display);
+    font-weight: 800;
+}
+.VPNavBarTitle .logo {
+    box-sizing: content-box;
+    height: 16px;
+    margin-right: 0;
+    border-radius: 9999px;
+    background: #fff;
+    padding: 9px 14px;
+    box-shadow: 0 4px 10px -4px rgb(10 42 110 / 0.5);
+}
+/* La pastille est blanche dans les deux modes : toujours le logo clair */
+.VPNavBarTitle .logo.dark {
+    display: none !important;
+}
+.VPNavBarTitle .logo.light {
+    display: inline-block !important;
+}
+.VPNav :focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+/* Menus déroulants du bandeau : fond clair, donc retour aux couleurs de la page */
+.VPNav .VPMenu {
+    --vp-c-text-1: #13213f;
+    --vp-c-text-2: #3b4b68;
+    --vp-c-brand-1: #2a68ad;
+    --vp-c-divider: #d6e1ee;
+    --vp-c-gutter: #d6e1ee;
+    --vp-c-bg-soft: #e3ebf5;
+    --vp-c-default-soft: #e3ebf5;
+}
+.dark .VPNav .VPMenu {
+    --vp-c-text-1: #f3f6fb;
+    --vp-c-text-2: #c9d6ea;
+    --vp-c-brand-1: #7fb0e8;
+    --vp-c-divider: rgb(255 255 255 / 0.1);
+    --vp-c-gutter: rgb(255 255 255 / 0.1);
+    --vp-c-bg-soft: #18284b;
+    --vp-c-default-soft: #18284b;
+}
+
+/* Accueil : le ciel de la vitrine, foncé en haut (texte blanc), clair en bas (texte encre) */
+html:not(.dark) .VPHome {
+    background: linear-gradient(
+            180deg,
+            #0a4fc4 0,
+            #1466e0 45%,
+            #2f8bff 70%,
+            #b9dcff 92%,
+            #f4faff 100%
+        )
+        #f4faff no-repeat;
+}
+html:not(.dark) .VPHome .VPHero {
+    --vp-c-text-1: #ffffff;
+    --vp-c-text-2: #eaf3ff;
+    --vp-button-brand-bg: var(--cf-duck);
+    --vp-button-brand-text: var(--cf-ink);
+    --vp-button-brand-hover-bg: var(--cf-duck-hover);
+    --vp-button-brand-hover-text: var(--cf-ink);
+    --vp-button-brand-active-bg: var(--cf-duck-hover);
+    --vp-button-brand-active-text: var(--cf-ink);
+}
+.VPHero .name {
+    -webkit-text-fill-color: currentColor !important;
+    background: none !important;
+}
+.VPHero .text {
+    color: var(--cf-duck) !important;
+}
+.VPHero .tagline {
+    font-weight: 500;
+}
+.VPHome :is(.VPButton, .VPFeature):focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+/* Cartes blanches posées sur le ciel */
+.VPFeature {
+    border: 0 !important;
+    border-radius: 1.5rem !important;
+    background: var(--vp-c-bg-elv) !important;
+    box-shadow: 0 30px 60px -28px rgb(10 40 110 / 0.45);
+}
+
+/* Pied de page : bande blanche de la vitrine */
+.VPFooter {
+    background: var(--vp-c-bg-elv) !important;
+}
+
 /* Logo complet, très large : réduit sur téléphone pour laisser la place à la recherche et au menu */
 @media (max-width: 480px) {
     .VPNavBarTitle .logo {
-        height: 16px;
+        height: 12px;
+        padding: 7px 10px;
     }
 }

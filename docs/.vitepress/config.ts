@@ -13,8 +13,11 @@ export default defineConfig({
             'link',
             { rel: 'icon', type: 'image/svg+xml', href: '/sdk-js/favicon.svg' },
         ],
+        ['meta', { name: 'theme-color', content: '#13213f' }],
     ],
     lastUpdated: true,
+    // Mêmes couleurs de code que la vitrine
+    markdown: { theme: { light: 'github-light', dark: 'github-dark-default' } },
     themeConfig: {
         logo: {
             light: '/logo-light.svg',
