@@ -24,7 +24,7 @@ export default defineConfig({
             dark: '/logo-dark.svg',
             alt: 'Canard Form',
         },
-        siteTitle: 'SDK',
+        siteTitle: 'JavaScript SDK',
         nav: [
             { text: 'Guide', link: '/guide/getting-started' },
             { text: 'Canard Form', link: 'https://canardform.com' },

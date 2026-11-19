@@ -30,6 +30,11 @@ features:
     details: About 5 KB gzip from jsDelivr. One script tag, no build tool.
 ---
 
+<script setup>
+// La version affichée suit package.json
+import { version } from '../package.json';
+</script>
+
 ::: warning Alpha
-The SDK is a pre-release (`1.0.0-alpha.5`): the API may change before 1.0.0.
+The SDK is a pre-release (<code>{{ version }}</code>): the API may change before 1.0.0.
 :::

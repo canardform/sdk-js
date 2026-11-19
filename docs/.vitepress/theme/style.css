@@ -314,10 +314,25 @@ html:not(.dark) .VPHome .VPHero {
     background: var(--vp-c-bg-elv) !important;
 }
 
-/* Logo complet, très large : réduit sur téléphone pour laisser la place à la recherche et au menu */
+/* Téléphone : logo réduit et titre sur deux lignes, pour laisser la place à la recherche et au menu */
 @media (max-width: 480px) {
     .VPNavBarTitle .logo {
-        height: 12px;
-        padding: 7px 10px;
+        height: 11px;
+        padding: 6px 9px;
+    }
+    .VPNavBarTitle .title {
+        gap: 8px;
+    }
+    .VPNavBarTitle .title span {
+        width: min-content;
+        font-size: 13px;
+        line-height: 1.1;
+        white-space: normal;
+    }
+}
+/* Très petit écran : le logo seul */
+@media (max-width: 350px) {
+    .VPNavBarTitle .title span {
+        display: none;
     }
 }
