@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-alpha.5] - 2026-11-19
+
 ### Added
 
 - Error code `origin_not_allowed` (403): the form lists its allowed websites and this one is not among them.
@@ -72,7 +74,8 @@ First public pre-release.
   server shows a fallback (`cf-unavailable`, `messages.unavailable`, Vue `#unavailable` slot) instead of
   an empty spot or an endless loading state.
 
-[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.4...HEAD
+[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.5...HEAD
+[1.0.0-alpha.5]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.4...v1.0.0-alpha.5
 [1.0.0-alpha.4]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.3...v1.0.0-alpha.4
 [1.0.0-alpha.3]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
 [1.0.0-alpha.2]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
