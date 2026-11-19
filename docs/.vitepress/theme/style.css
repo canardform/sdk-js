@@ -336,3 +336,18 @@ html:not(.dark) .VPHome .VPHero {
         display: none;
     }
 }
+
+/* Lien vers la vitrine : bouton jaune canard dans la barre du haut (simple lien dans le menu mobile) */
+.VPNavBarMenuLink[href^='https://canardform.com'] {
+    margin-left: 8px;
+    padding: 0 14px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--cf-duck);
+    color: var(--cf-ink);
+    font-weight: 600;
+}
+.VPNavBarMenuLink[href^='https://canardform.com']:hover {
+    background: var(--cf-duck-hover);
+    color: var(--cf-ink);
+}

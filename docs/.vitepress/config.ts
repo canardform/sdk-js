@@ -27,7 +27,7 @@ export default defineConfig({
         siteTitle: 'JavaScript SDK',
         nav: [
             { text: 'Guide', link: '/guide/getting-started' },
-            { text: 'Canard Form', link: 'https://canardform.com' },
+            { text: 'canardform.com', link: 'https://canardform.com' },
         ],
         sidebar: [
             {
