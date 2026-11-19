@@ -531,6 +531,16 @@ describe('steps', () => {
 });
 
 describe('security', () => {
+    it('reports a website missing from the allowed websites', async () => {
+        const fetch = vi
+            .fn<typeof globalThis.fetch>()
+            .mockReturnValue(reply(403, { error: 'origin_not_allowed' }));
+
+        await expect(
+            getForm('f1', { publicUrl: 'https://forms.test', fetch }),
+        ).rejects.toMatchObject({ error: 'origin_not_allowed', status: 403 });
+    });
+
     it('encodes ids in every URL', async () => {
         const fetch = vi
             .fn<typeof globalThis.fetch>()

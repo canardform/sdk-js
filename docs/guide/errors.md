@@ -22,6 +22,7 @@ try {
 | `captcha_failed`          | the hCaptcha token is missing, invalid or already used                                                                   |
 | `quota_exceeded`          | the organization's monthly answer quota is reached                                                                       |
 | `storage_quota_exceeded`  | the file storage space is full                                                                                           |
+| `origin_not_allowed`      | this website is not in the form's allowed websites (form settings); add it there, `localhost` included for local tests   |
 | `spam_rejected`           | the bot trap was filled                                                                                                  |
 | `idempotency_conflict`    | same idempotency key, different content                                                                                  |
 | `idempotency_in_progress` | the same submission is already in progress                                                                               |

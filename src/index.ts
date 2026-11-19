@@ -12,6 +12,7 @@ export type ErrorCode =
     | 'captcha_failed'
     | 'quota_exceeded'
     | 'storage_quota_exceeded'
+    | 'origin_not_allowed'
     | 'spam_rejected'
     | 'idempotency_conflict'
     | 'idempotency_in_progress'
@@ -303,8 +304,11 @@ export async function getForm(
     );
 
     if (!response.ok) {
+        // origin_not_allowed: this website is not in the form's allowed websites
         throw new CanardFormError(
-            'not_found',
+            response.status === 403
+                ? ((await readJson<object>(response)).error ?? 'not_found')
+                : 'not_found',
             response.status,
             `HTTP ${String(response.status)}`,
         );

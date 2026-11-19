@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Error code `origin_not_allowed` (403): the form lists its allowed websites and this one is not among them.
+  `getForm` now reports it instead of `not_found`; add the website (and `localhost` for local tests) in the
+  form settings.
+
 ## [1.0.0-alpha.4] - 2026-11-18
 
 ### Fixed
