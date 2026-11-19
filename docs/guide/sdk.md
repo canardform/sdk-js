@@ -19,6 +19,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
   lang: 'en', // otherwise the browser's language
   classes: { form: 'contact', submit: 'btn' }, // your CSS classes
   messages: { success: 'Thanks, talk soon!' }, // fallback texts
+  errorMessages: { quota_exceeded: 'Come back tomorrow.' }, // your sentence for a refusal, by code
   renderField: (field, el) => {
     // adjust or replace a field
     if (field.type === 'email') el.classList.add('col-span-2');
@@ -31,7 +32,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 ```
 
 - Without `onSubmitted`, the form is replaced by the thank-you message.
-- A refused field gets its message under it (`cf-field-error`, linked to the field) and the form goes back to that field's step, with the focus on the field, or on a summary of the errors (`cf-error-summary`) when there are several; any other error (closed form, network…) is shown under the form (`cf-error`), with `messages.error` instead of the server's text when set. `onError` is called in both cases.
+- A refused field gets its message under it (`cf-field-error`, linked to the field) and the form goes back to that field's step, with the focus on the field, or on a summary of the errors (`cf-error-summary`) when there are several; any other error (closed form, network…) is shown under the form (`cf-error`): the server's short sentence in the form's language, your `errorMessages` sentence for that code, or `messages.error` for every error when set. `onError` is called in both cases. The details for you (code, HTTP status, what to do) go to the browser console, see [Error codes](./errors).
 - `beforeSubmit` can only add answers to questions of the form (a hidden question, for instance): any other key is ignored by the server.
 - A hidden question (`type: 'hidden'`) is never shown: it is sent with the page address parameter it reads (`?utm_source=…`, its key by default), otherwise its default value. `beforeSubmit` overrides it. The React and Vue components do the same; for your own rendering, `withHiddenValues(definition, data)` adds these values.
 - `renderField` receives the default rendering; returning `undefined` keeps it. The default rendering is also exported: `renderField(field, locale)` returns a field as unstyled HTML (label, control, help text, file constraints), and `fieldControl(field, error)` only describes its control (tag, attributes, choices).
@@ -42,6 +43,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 | `publicUrl`      | `string`                                                          | Domain of the public forms, `https://canardform.app` by default     |
 | `classes`        | `{ form, field, error, success, closed, unavailable, submit }`    | CSS classes set on each element, replacing the `cf-*` defaults      |
 | `messages`       | `{ submit, success, closed, unavailable, error, next, previous }` | Fallback texts, see [Built-in texts](#built-in-texts)               |
+| `errorMessages`  | `{ [code]: string }`                                              | Your sentence for a refusal, by [error code](./errors)              |
 | `renderField`    | `(field, element) => HTMLElement \| void`                         | Replace or adjust the rendering of a field                          |
 | `beforeSubmit`   | `(data: FormData) => FormData \| void \| Promise<…>`              | Add or adjust data just before sending (hidden field, campaign id…) |
 | `onSubmitted`    | `(submissionId, form) => void`                                    | After a successful submission                                       |
@@ -59,7 +61,7 @@ const { element, definition, destroy } = await mountForm('#contact', 'ID', {
 
 ## Built-in texts
 
-The built-in texts ("Send", "Next", "Previous", "Step 1 of 2", "This form is closed.", "This form cannot be shown right now. Please try again later.", "Thank you!", the required fields notice, the error summary, the bot check reminder and the file constraints) follow the form's language (before it is loaded: the `lang` option, then the visitor's browser): French for a `fr*` locale, English otherwise. They are exported as `defaultMessages(locale)`:
+The built-in texts ("Send", "Next", "Previous", "Step 1 of 2", "This form is closed.", "This form cannot be shown right now. Please try again later.", "Thank you!", the required fields notice, the error summary, the bot check reminder, the file constraints, "Something went wrong" for a refusal without a sentence and "Unable to connect" for a network failure) follow the form's language (before it is loaded: the `lang` option, then the visitor's browser): French for a `fr*` locale, English otherwise. They are exported as `defaultMessages(locale)`:
 
 ```js
 import { defaultMessages } from '@canardform/sdk';
@@ -114,11 +116,11 @@ await submitForm('ID', new FormData(form)); // or an object: { email: 'jane@exam
 await submitForm('ID', data, { idempotencyKey: order.id }); // retry without duplicates
 ```
 
-`submitForm` sends files too, and throws a `CanardFormError` (`error`, `status`, `errors`) when the submission is refused. It resolves to the submission id. Options: `publicUrl`, `idempotencyKey` (random when missing), `lang` (the visitor's language, for the acknowledgement sent after the answer) and `fetch`.
+`submitForm` sends files too, and throws a `CanardFormError` (`error`, `status`, `errors`, and `message`: a sentence for the visitor in the form's language) when the submission is refused. It resolves to the submission id. Options: `publicUrl`, `idempotencyKey` (random when missing), `lang` (the visitor's language, for the acknowledgement sent after the answer and the texts of the errors), `errorMessages` (your sentence for a refusal, by code) and `fetch`.
 
 ## getForm
 
-`getForm('ID', { lang })` reads the published form without a key, as a `PublicForm`: `id`, `locale`, `open`, `fields`, `steps`, `submit_label`, `success_message`, `closed_message` and `hcaptcha`. It throws a `CanardFormError` with `not_found` when the form cannot be read.
+`getForm('ID', { lang })` reads the published form without a key, as a `PublicForm`: `id`, `locale`, `open`, `fields`, `steps`, `submit_label`, `success_message`, `closed_message` and `hcaptcha`. It throws a `CanardFormError` with `not_found` when the form cannot be read, or `origin_not_allowed` when this website is not among the form's allowed websites; its `message` is the "cannot be shown" built-in text.
 
 Each field (`PublicField`) has `key`, `type`, `label`, `required` and, when set, `help`, `placeholder`, `options`, `visible_if` (display condition), `autocomplete` (purpose for the browser's autofill, from a closed list: `honorific-prefix`, `name`, `given-name`, `family-name`, `email`, `tel`, `organization`, `organization-title`, `street-address`, `address-line1`, `address-line2`, `postal-code`, `address-level2`, `address-level1`, `country-name`, `bday`, `url`, `language`), `no_autofill` and, for a file, `rules` (`max_files`, `max_size` in MB, `accept` extensions).
 
@@ -168,5 +170,6 @@ Also exported by `@canardform/sdk`, for your own rendering:
 | `renderField(field, locale?)`                     | A field as unstyled HTML (label, control, help text), as `mountForm` builds it     |
 | `fieldHint(field, locale?)`                       | The constraints of a file field written out (number, size, formats)                |
 | `defaultMessages(locale)`                         | Built-in texts                                                                     |
+| `errorMessage(error, locale?)`                    | Text to show the visitor for any error (refusal, network failure)                  |
 
 Types: `PublicForm`, `PublicField`, `PublicStep`, `ErrorCode`, `SubmitOptions`, `MountOptions`, `MountedForm`, `FieldControl`, `Answers`, `ConditionGroup`; from `@canardform/sdk/controller`: `FormState`, `FormStatus`, `ControllerOptions`, `FormController`.

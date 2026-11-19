@@ -10,6 +10,7 @@ import {
     fieldErrors,
     validateStep,
     defaultMessages,
+    errorMessage,
     withHiddenValues,
 } from './index.js';
 import type {
@@ -75,7 +76,12 @@ export function createFormController(
         if (captchaElement && state.definition) {
             void renderCaptcha(captchaElement, state.definition).catch(
                 (exception: unknown) => {
-                    set({ error: (exception as Error).message });
+                    set({
+                        error: errorMessage(
+                            exception,
+                            state.definition?.locale ?? options.lang,
+                        ),
+                    });
                 },
             );
         }
@@ -110,7 +116,10 @@ export function createFormController(
                     unavailable: false,
                 });
             } catch (exception) {
-                set({ unavailable: true, error: (exception as Error).message });
+                set({
+                    unavailable: true,
+                    error: errorMessage(exception, options.lang),
+                });
                 throw exception;
             }
             showCaptcha();
@@ -159,7 +168,10 @@ export function createFormController(
                 errors,
                 error: Object.keys(errors).length
                     ? null
-                    : (exception as Error).message,
+                    : errorMessage(
+                          exception,
+                          state.definition?.locale ?? options.lang,
+                      ),
             });
             return null;
         }

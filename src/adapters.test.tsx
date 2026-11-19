@@ -245,6 +245,34 @@ describe('CanardForm components', () => {
         expect(root.querySelector('[data-key="budget"]')).toBeNull();
     });
 
+    it('Vue: keeps what the visitor typed after a refused submission', async () => {
+        const fetch = vi
+            .fn<typeof globalThis.fetch>()
+            .mockReturnValueOnce(json(200, published))
+            .mockReturnValueOnce(
+                json(429, { error: 'rate_limited', message: 'Trop d’envois.' }),
+            );
+        const root = document.createElement('div');
+        createApp({
+            render: () => h(VueCanardForm, { formId: 'f1', fetch } as never),
+        }).mount(root);
+        await vi.waitFor(() =>
+            expect(root.querySelector('form')).not.toBeNull(),
+        );
+        const email = root.querySelector<HTMLInputElement>(
+            'input[name="email"]',
+        )!;
+        email.value = 'marie@example.com';
+        root.querySelector('form')!.dispatchEvent(
+            new Event('submit', { cancelable: true }),
+        );
+
+        await vi.waitFor(() =>
+            expect(root.textContent).toContain('Trop d’envois.'),
+        );
+        expect(email.value).toBe('marie@example.com');
+    });
+
     const stepped = {
         ...published,
         steps: [
@@ -260,12 +288,13 @@ describe('CanardForm components', () => {
     it('React: shows one step at a time and checks it before moving on', async () => {
         const container = document.createElement('div');
         document.body.append(container);
+        const fetch = vi.fn<typeof globalThis.fetch>();
         await act(async () =>
             createRoot(container).render(
                 createElement(CanardForm, {
                     formId: 'f1',
                     definition: stepped,
-                    fetch: vi.fn(),
+                    fetch,
                 }),
             ),
         );
@@ -300,6 +329,17 @@ describe('CanardForm components', () => {
 
         await click('.cf-previous');
         expect(visibleStep().dataset.step).toBe('who');
+
+        // Enter on an intermediate step moves on, it does not send
+        await act(async () =>
+            container
+                .querySelector('form')!
+                .dispatchEvent(
+                    new Event('submit', { bubbles: true, cancelable: true }),
+                ),
+        );
+        expect(visibleStep().dataset.step).toBe('what');
+        expect(fetch).not.toHaveBeenCalled();
         container.remove();
     });
 
@@ -344,12 +384,13 @@ describe('CanardForm components', () => {
     it('Vue: shows one step at a time', async () => {
         const root = document.createElement('div');
         document.body.append(root);
+        const fetch = vi.fn<typeof globalThis.fetch>();
         createApp({
             render: () =>
                 h(VueCanardForm, {
                     formId: 'f1',
                     definition: stepped,
-                    fetch: vi.fn(),
+                    fetch,
                 } as never),
         }).mount(root);
         await nextTick();
@@ -373,6 +414,18 @@ describe('CanardForm components', () => {
         expect(document.activeElement).toBe(
             root.querySelector('#cf-step-what'),
         );
+
+        root.querySelector<HTMLButtonElement>('.cf-previous')!.click();
+        await nextTick();
+        expect(visibleStep().dataset.step).toBe('who');
+
+        // Enter on an intermediate step moves on, it does not send
+        root.querySelector('form')!.dispatchEvent(
+            new Event('submit', { cancelable: true }),
+        );
+        await nextTick();
+        expect(visibleStep().dataset.step).toBe('what');
+        expect(fetch).not.toHaveBeenCalled();
     });
 
     it('renders the whole form on the server when the fields are passed (Next.js, Nuxt)', async () => {

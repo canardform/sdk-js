@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import {
+    answersOf,
     CanardFormError,
     defaultMessages,
+    errorMessage,
     fieldControl,
     getForm,
     mountForm,
@@ -271,6 +273,21 @@ describe('hidden fields', () => {
     });
 });
 
+describe('answersOf', () => {
+    it('collects the checkboxes of a group (name[]) as an array', () => {
+        const form = document.createElement('form');
+        form.innerHTML =
+            '<input name="email" value="a@b.fr">' +
+            '<input type="checkbox" name="topics[]" value="a" checked>' +
+            '<input type="checkbox" name="topics[]" value="b">' +
+            '<input type="checkbox" name="topics[]" value="c" checked>';
+        expect(answersOf(form)).toEqual({
+            email: 'a@b.fr',
+            topics: ['a', 'c'],
+        });
+    });
+});
+
 describe('conditional fields', () => {
     it('hides and disables a field until its condition is met', async () => {
         document.body.innerHTML = '<div id="slot"></div>';
@@ -432,7 +449,66 @@ describe('anti-robot check on your own site (hCaptcha)', () => {
                 .hasAttribute('aria-describedby'),
         ).toBe(false);
         await vi.waitFor(() => expect(reset).toHaveBeenCalledWith('w1'));
+        // The refusal is told in the form's language, never as a bare HTTP status
+        expect(
+            element.querySelector('.cf-error:not(#cf-captcha-error)')!
+                .textContent,
+        ).toBe('Une erreur est survenue. Réessayez dans un instant.');
         delete (window as unknown as { hcaptcha?: unknown }).hcaptcha;
+    });
+});
+
+describe('error messages', () => {
+    it("shows the server's sentence to the visitor and the details to the developer in the console", async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const fetch = vi
+            .fn<typeof globalThis.fetch>()
+            .mockReturnValueOnce(
+                reply(500, {
+                    error: 'technical_error',
+                    message:
+                        'Une erreur technique est survenue. Référence : AB12',
+                    reference: 'AB12',
+                }),
+            )
+            .mockReturnValueOnce(reply(502, {}));
+
+        await expect(
+            submitForm('f1', {}, { fetch, lang: 'fr' }),
+        ).rejects.toThrow(
+            'Une erreur technique est survenue. Référence : AB12',
+        );
+        expect(warn).toHaveBeenLastCalledWith(
+            expect.stringMatching(
+                /^\[Canard Form\] Submission of form f1 refused: technical_error \(HTTP 500\) from http:\/\/[^,]+, .* Reference: AB12\. https:/,
+            ),
+        );
+        // No sentence from the server (proxy error page…): the built-in one, in the form's language
+        await expect(
+            submitForm('f1', {}, { fetch, lang: 'fr' }),
+        ).rejects.toThrow(
+            'Une erreur est survenue. Réessayez dans un instant.',
+        );
+        // Your own sentence for a code wins over the server's
+        await expect(
+            submitForm(
+                'f1',
+                {},
+                {
+                    fetch: vi.fn<typeof globalThis.fetch>().mockReturnValueOnce(
+                        reply(403, {
+                            error: 'quota_exceeded',
+                            message: 'Server sentence',
+                        }),
+                    ),
+                    errorMessages: { quota_exceeded: 'Revenez demain.' },
+                },
+            ),
+        ).rejects.toThrow('Revenez demain.');
+        expect(errorMessage(new TypeError('Failed to fetch'), 'fr')).toBe(
+            'Connexion impossible. Vérifiez votre réseau puis réessayez : vos réponses sont conservées.',
+        );
+        warn.mockRestore();
     });
 });
 
@@ -510,6 +586,13 @@ describe('steps', () => {
         ).value = 'a@b.fr';
         next.click();
         expect(section('s3').hidden).toBe(false); // the Budget step is skipped (condition not met)
+
+        element.querySelector<HTMLButtonElement>('.cf-previous')!.click();
+        expect(section('s1').hidden).toBe(false);
+        // Enter on an intermediate step moves on, it does not send
+        element.dispatchEvent(new Event('submit', { cancelable: true }));
+        expect(section('s3').hidden).toBe(false);
+        expect(fetch).toHaveBeenCalledTimes(1);
         expect(element.querySelector<HTMLElement>('.cf-submit')!.hidden).toBe(
             false,
         );

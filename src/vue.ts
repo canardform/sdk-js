@@ -109,6 +109,8 @@ export const CanardForm = defineComponent({
         /** Fields already fetched on the server (getForm), for a first render without waiting (Nuxt). */
         definition: Object as PropType<ControllerOptions['definition']>,
         fetch: Function as PropType<typeof fetch>,
+        /** Your own sentence for a refusal, by error code. */
+        errorMessages: Object as PropType<ControllerOptions['errorMessages']>,
         classes: {
             type: Object as PropType<Partial<typeof CLASSES>>,
             default: () => ({}),
@@ -137,6 +139,7 @@ export const CanardForm = defineComponent({
             publicUrl: props.publicUrl,
             definition: props.definition,
             fetch: props.fetch,
+            errorMessages: props.errorMessages,
         });
         const css = computed(() => ({ ...CLASSES, ...props.classes }));
         const current = ref<HTMLElement | null>(null);

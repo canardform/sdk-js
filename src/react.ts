@@ -60,7 +60,9 @@ export function FieldInput({
     error?: string | null;
 }): ReactNode {
     const control = fieldControl(field, error);
-    const { value, ...attrs } = control.attrs;
+    // React spells it autoComplete (lowercase works but warns in every visitor's console in development)
+    const { value, autocomplete: autoComplete, ...rest } = control.attrs;
+    const attrs: typeof rest = { ...rest, autoComplete };
 
     if (control.tag === 'select') {
         return h(

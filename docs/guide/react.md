@@ -26,6 +26,7 @@ Like [`mountForm`](./sdk), but as a native component: fields, labels, languages,
 | `onSubmitted`                                  | `(submissionId) => void`; without it, the thank-you message is shown                                         |
 | `loading`                                      | Shown while the fields load                                                                                  |
 | `messages`                                     | `submit`, `success`, `closed`, `unavailable`, `next`, `previous`; see [Built-in texts](./sdk#built-in-texts) |
+| `errorMessages`                                | Your sentence for a refusal, by [error code](./errors): `{ quota_exceeded: '…' }`                            |
 | `definition`                                   | The form read on the server with `getForm`                                                                   |
 | `lang`, `publicUrl`, `idempotencyKey`, `fetch` | Same as [`submitForm`](./sdk#submitform)                                                                     |
 

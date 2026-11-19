@@ -23,6 +23,7 @@ Like [`mountForm`](./sdk), but as a native component: fields, labels, languages,
 | `form-id`                     | The form id                                                                                                  |
 | `classes`                     | `form`, `field`, `error`, `success`, `closed`, `unavailable`, `submit`                                       |
 | `messages`                    | `submit`, `success`, `closed`, `unavailable`, `next`, `previous`; see [Built-in texts](./sdk#built-in-texts) |
+| `error-messages`              | Your sentence for a refusal, by [error code](./errors): `{ quota_exceeded: '…' }`                            |
 | `definition`                  | The form read on the server with `getForm`                                                                   |
 | `lang`, `public-url`, `fetch` | Same as [`submitForm`](./sdk#submitform)                                                                     |
 | `@submitted`                  | `(submissionId) => void`, after a successful submission (the thank-you message or `#success` is still shown) |

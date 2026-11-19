@@ -16,6 +16,7 @@ export type ErrorCode =
     | 'spam_rejected'
     | 'idempotency_conflict'
     | 'idempotency_in_progress'
+    | 'technical_error'
     | 'not_found'
     | 'http_error'
     | (string & {});
@@ -36,9 +37,50 @@ export class CanardFormError extends Error {
 /** Error body of the public runtime. */
 type ErrorBody = {
     error?: ErrorCode;
+    /** Sentence for the visitor, in the requested language, without technical detail. */
     message?: string;
     errors?: Record<string, string[]>;
+    /** Short reference of a technical error, to quote to support. */
+    reference?: string;
 };
+
+const DOCS = 'https://canardform.github.io/sdk-js/guide/errors';
+
+/** What a developer can do about a refusal; never shown to the visitor, only in the console. */
+const HINTS: Partial<Record<ErrorCode, string>> = {
+    origin_not_allowed:
+        "this website is not in the form's allowed websites: add it in the form settings (localhost too, for local tests).",
+    captcha_failed:
+        'the hCaptcha token is missing, invalid or already used (each token works once).',
+    quota_exceeded: "the organization's monthly answer quota is reached.",
+    storage_quota_exceeded: "the organization's file storage is full.",
+    form_closed: 'the form is suspended, archived or outside its dates.',
+    technical_error:
+        'an error on our side, nothing was saved; quote the reference to support.',
+};
+
+/** Logs a refusal for the developer (code, status, reference, what to do): the visitor only sees `message`. */
+function report(
+    action: string,
+    formId: string,
+    status: number,
+    json: ErrorBody,
+): void {
+    // An invalid answer is the visitor's business, not a bug to look into
+    if (json.error === 'validation_failed' || typeof console === 'undefined') {
+        return;
+    }
+    const code = json.error ?? 'http_error';
+    console.warn(
+        `[Canard Form] ${action} of form ${formId} refused: ${code} (HTTP ${String(status)})` +
+            (typeof location === 'undefined'
+                ? ''
+                : ` from ${location.origin}`) +
+            (HINTS[code] ? `, ${HINTS[code]}` : '.') +
+            (json.reference ? ` Reference: ${json.reference}.` : '') +
+            ` ${DOCS}`,
+    );
+}
 
 /** Reads a JSON body, an empty object when there is none or it is not JSON. */
 async function readJson<T>(response: Response): Promise<T & ErrorBody> {
@@ -77,6 +119,11 @@ export type SubmitOptions = {
     /** Visitor's language, for the acknowledgement sent after the answer. */
     lang?: string;
     fetch?: typeof fetch;
+    /**
+     * Your own sentence for a refusal, by error code (`{ quota_exceeded: '…' }`), instead of the one sent
+     * by the server in the form's language.
+     */
+    errorMessages?: Partial<Record<ErrorCode, string>>;
 };
 
 /**
@@ -108,10 +155,13 @@ export async function submitForm(
     const json = await readJson<{ submission_id: string }>(response);
 
     if (!response.ok) {
+        report('Submission', formId, response.status, json);
         throw new CanardFormError(
             json.error ?? 'http_error',
             response.status,
-            json.message ?? `HTTP ${String(response.status)}`,
+            options.errorMessages?.[json.error ?? 'http_error'] ??
+                json.message ??
+                defaultMessages(options.lang).failure,
             json.errors ?? {},
         );
     }
@@ -304,13 +354,15 @@ export async function getForm(
     );
 
     if (!response.ok) {
-        // origin_not_allowed: this website is not in the form's allowed websites
+        // origin_not_allowed (403): this website is not in the form's allowed websites
+        const json =
+            response.status === 403 ? await readJson<object>(response) : {};
+        const error = json.error ?? 'not_found';
+        report('Loading', formId, response.status, { ...json, error });
         throw new CanardFormError(
-            response.status === 403
-                ? ((await readJson<object>(response)).error ?? 'not_found')
-                : 'not_found',
+            error,
             response.status,
-            `HTTP ${String(response.status)}`,
+            defaultMessages(options.lang).unavailable,
         );
     }
 
@@ -337,6 +389,9 @@ const MESSAGES = {
         files: (count: number, size?: number) =>
             `Up to ${count} file${count > 1 ? 's' : ''}${size ? ` of ${size} MB${count > 1 ? ' each' : ''}` : ''}.`,
         formats: (list: string) => `Accepted formats: ${list}.`,
+        failure: 'Something went wrong. Please try again in a moment.',
+        network:
+            'Unable to connect. Check your network and try again: your answers are kept.',
     },
     fr: {
         submit: 'Envoyer',
@@ -357,6 +412,9 @@ const MESSAGES = {
         files: (count: number, size?: number) =>
             `Jusqu'à ${count} fichier${count > 1 ? 's' : ''}${size ? ` de ${size} Mo${count > 1 ? ' chacun' : ''}` : ''}.`,
         formats: (list: string) => `Formats acceptés : ${list}.`,
+        failure: 'Une erreur est survenue. Réessayez dans un instant.',
+        network:
+            'Connexion impossible. Vérifiez votre réseau puis réessayez : vos réponses sont conservées.',
     },
 };
 
@@ -368,6 +426,16 @@ export function defaultMessages(locale?: string | null) {
     // Form not loaded yet (or unreachable): the visitor's browser language
     locale ??= typeof navigator === 'undefined' ? null : navigator.language;
     return locale?.toLowerCase().startsWith('fr') ? MESSAGES.fr : MESSAGES.en;
+}
+
+/**
+ * Text to show the visitor for a failure: the refusal already translated, or for anything else (server
+ * unreachable, hCaptcha script blocked…) the network message rather than the browser's English one.
+ */
+export function errorMessage(exception: unknown, locale?: string | null) {
+    return exception instanceof CanardFormError
+        ? exception.message
+        : defaultMessages(locale).network;
 }
 
 type HCaptchaApi = {
@@ -652,7 +720,8 @@ export function fieldControl(
                     ...base,
                     placeholder: field.placeholder,
                     type: types.includes(field.type) ? field.type : 'text',
-                    value: field.type === 'checkbox' ? '1' : undefined,
+                    // Never `value: undefined`: Vue would empty what the visitor typed at each render
+                    ...(field.type === 'checkbox' ? { value: '1' } : {}),
                 },
                 choices: [],
             };
@@ -924,7 +993,7 @@ export async function mountForm(
         element.append(captchaError, captchaSlot);
         void renderCaptcha(captchaSlot, definition).catch(
             (exception: unknown) => {
-                error.textContent = (exception as Error).message;
+                error.textContent = errorMessage(exception, definition.locale);
                 error.hidden = false;
             },
         );
@@ -1087,7 +1156,9 @@ export async function mountForm(
                         : {},
                 )
             ) {
-                error.textContent = options.messages?.error ?? failure.message;
+                error.textContent =
+                    options.messages?.error ??
+                    errorMessage(failure, definition.locale);
                 error.hidden = false;
             }
             button.toggleAttribute('disabled', false);
