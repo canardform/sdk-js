@@ -13,6 +13,7 @@ npm test          # Vitest (happy-dom)
 npm run lint      # ESLint (strict, type-checked) + Prettier
 npm run typecheck
 npm run build && npm run check:package   # publint + Are The Types Wrong
+npm run test:package  # installs the packed tarball, imports it with Node, renders React and Vue on the server
 npm run docs:dev  # documentation at http://localhost:5173/sdk-js/
 ```
 
@@ -27,5 +28,8 @@ npm run docs:dev  # documentation at http://localhost:5173/sdk-js/
 
 1. Move the _Unreleased_ entries of `CHANGELOG.md` under the new version.
 2. `npm version <version>` (e.g. `1.0.0-alpha.2`), then push the commit and the tag.
-3. The **Release** workflow checks, publishes to npm with provenance (pre-releases under their own
-   dist-tag, e.g. `alpha`) and creates the GitHub release.
+3. The **Release** workflow runs the whole CI on the tag (lint, types, unit tests, package test), then
+   publishes to npm with provenance (pre-releases under their own dist-tag, e.g. `alpha`) and creates
+   the GitHub release. If the CI fails, nothing is published.
+4. Urgent fix with a failing CI: _Actions › Release › Run workflow_, pick the tag in _Use workflow from_
+   and tick `skip_checks`. The package is still built and checked (`check:package`), only the CI is skipped.

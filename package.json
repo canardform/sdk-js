@@ -54,6 +54,7 @@
         "lint": "eslint . && prettier --check .",
         "format": "eslint --fix . && prettier --write .",
         "test": "vitest run",
+        "test:package": "node test/package/smoke.js",
         "check:package": "publint --strict && attw --pack --profile esm-only",
         "docs:dev": "vitepress dev docs",
         "docs:build": "vitepress build docs",

@@ -1,10 +1,19 @@
 name: Release
 
-# Publishes to npm when a version tag (v1.2.3, v1.0.0-alpha.1) is pushed. No npm token: trusted
-# publishing (OIDC) with provenance, so anyone can check the package was built here, from this tag.
+# Publishes to npm when a version tag (v1.2.3, v1.0.0-alpha.1) is pushed, only if the CI passes on
+# that tag. No npm token: trusted publishing (OIDC) with provenance, so anyone can check the package
+# was built here, from this tag.
+# Quick fix: Actions > Release > Run workflow, pick the tag in "Use workflow from" and tick
+# "skip_checks" to publish without waiting for the CI (the package is still built and checked).
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      skip_checks:
+        description: Quick fix, publish without the CI (lint, types, tests)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,7 +23,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ci:
+    if: ${{ !inputs.skip_checks }}
+    uses: ./.github/workflows/ci.yml # zizmor: ignore[self-repository] the $/ syntax is still rejected by actionlint
+    permissions:
+      contents: read
+      security-events: write # zizmor uploads its results
+
   publish:
+    needs: ci
+    # skipped CI (quick fix) is accepted, failed or cancelled CI never is
+    if: ${{ !cancelled() && (needs.ci.result == 'success' || (inputs.skip_checks && needs.ci.result == 'skipped')) }}
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -29,14 +48,11 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false # no cache when publishing
-      - run: npm install -g npm@11.12.1 # same npm everywhere, must match "packageManager"
+      - run: npm install -g npm@11.12.1 # same npm everywhere, must match "packageManager" (exact version) # zizmor: ignore[adhoc-packages]
       - run: npm ci --ignore-scripts
       - run: npm audit signatures
       - name: Tag matches package.json
-        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME" || { echo "::error::Run the release from the version tag (v$(node -p 'require("./package.json").version')), not $GITHUB_REF_NAME"; exit 1; }
       - run: npm run build
       - run: npm run check:package
       - name: Publish (pre-releases under their own dist-tag, never latest)
@@ -46,4 +62,4 @@ jobs:
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes $([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease)
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --prerelease="$([[ "$GITHUB_REF_NAME" == *-* ]] && echo true || echo false)"

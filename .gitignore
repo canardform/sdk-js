@@ -5,3 +5,4 @@ docs/.vitepress/dist
 *.tgz
 coverage
 .idea
+test/package/.app
