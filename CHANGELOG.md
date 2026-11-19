@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0-alpha.6] - 2026-11-20
+
+### Added
+
+- `errorMessages` option (`mountForm`, `submitForm`, React and Vue): your own sentence for a refusal, by
+  error code, e.g. `{ quota_exceeded: 'Come back tomorrow.' }`.
+- A refusal is logged for the developer with `console.warn`: code, HTTP status, what to do, reference of a
+  technical error and a link to the error codes page. The visitor never sees these details.
+
+### Fixed
+
+- Vue: a refused submission no longer empties the text fields the visitor typed in.
+- React: no more `Invalid DOM property autocomplete` warning in the console in development.
+- Every refusal is shown in the form's language with the short sentence sent by the server, instead of
+  `HTTP 403` / `HTTP 422`; a network failure no longer shows the browser's English message.
+  `CanardFormError.message` is this sentence; `errorMessage(error, locale)` gives it for any error.
+
 ## [1.0.0-alpha.5] - 2026-11-19
 
 ### Added
@@ -74,7 +91,8 @@ First public pre-release.
   server shows a fallback (`cf-unavailable`, `messages.unavailable`, Vue `#unavailable` slot) instead of
   an empty spot or an endless loading state.
 
-[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.5...HEAD
+[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.6...HEAD
+[1.0.0-alpha.6]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.5...v1.0.0-alpha.6
 [1.0.0-alpha.5]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.4...v1.0.0-alpha.5
 [1.0.0-alpha.4]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.3...v1.0.0-alpha.4
 [1.0.0-alpha.3]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
