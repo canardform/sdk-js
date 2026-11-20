@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-20
+
+First stable release: the API now follows [Semantic Versioning](https://semver.org/), a breaking change
+only comes with a version 2. No change since 1.0.0-alpha.6.
+
+- Install with `npm install @canardform/sdk` (no more `@alpha`); from jsDelivr, `@canardform/sdk@1/+esm`
+  gets the bug fixes on its own.
+
 ## [1.0.0-alpha.6] - 2026-11-20
 
 ### Added
@@ -91,7 +99,8 @@ First public pre-release.
   server shows a fallback (`cf-unavailable`, `messages.unavailable`, Vue `#unavailable` slot) instead of
   an empty spot or an endless loading state.
 
-[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.6...HEAD
+[Unreleased]: https://github.com/canardform/sdk-js/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.6...v1.0.0
 [1.0.0-alpha.6]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.5...v1.0.0-alpha.6
 [1.0.0-alpha.5]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.4...v1.0.0-alpha.5
 [1.0.0-alpha.4]: https://github.com/canardform/sdk-js/compare/v1.0.0-alpha.3...v1.0.0-alpha.4

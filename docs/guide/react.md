@@ -1,7 +1,7 @@
 # React
 
 ```bash
-npm install @canardform/sdk@alpha
+npm install @canardform/sdk
 ```
 
 ## The form builds itself

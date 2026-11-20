@@ -15,14 +15,10 @@ Canard Form receives the answers of a form on your own website. There are three 
 
 The form id (`ID` in the examples) and examples generated with your real fields are in the **Integrations** tab of the form in Canard Form.
 
-::: warning Alpha
-The SDK is a pre-release: the API may change before 1.0.0.
-:::
-
 ## Install
 
 ```bash
-npm install @canardform/sdk@alpha
+npm install @canardform/sdk
 ```
 
 Without a build tool (a plain HTML page), load the SDK from jsDelivr, minified (about 5 KB gzip):
@@ -35,8 +31,8 @@ Without a build tool (a plain HTML page), load the SDK from jsDelivr, minified (
 </script>
 ```
 
-::: info Pin the exact version during the alpha
-Semver ranges never match pre-releases, so `@1` does not resolve to <code>{{ version }}</code>. Once 1.0.0 is stable, use `@canardform/sdk@1/+esm`: bug fixes arrive on their own, and a version 2 changes nothing on your site.
+::: tip Updates
+<code>@{{ version }}</code> never changes. Use `@canardform/sdk@1/+esm` instead to get bug fixes on their own: a version 2 changes nothing on your site.
 :::
 
 The same code works with or without server-side rendering: without it, the fields are read in the browser; with it, pass `definition` (read by `getForm` on the server) so the form is already in the HTML. See [Server-side rendering](./ssr).
